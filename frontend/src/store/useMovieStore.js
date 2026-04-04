@@ -2,103 +2,149 @@ import { create } from 'zustand';
 
 const GRAPHQL_URL = "http://localhost:4000/graphql";
 
-const GET_TRENDING = (type) => {
-  const queryMap = {
-    'movies': 'trendingMovies',
-    'tv': 'trendingTVShows',
-    'top-rated': 'topRatedMovies',
-    'top-rated-tv': 'topRatedTVShows',
-    'top-english': 'topEnglishMovies',
-    'bottom': 'bottomMovies'
-  };
-  
-  const queryName = queryMap[type] || 'trendingMovies';
-
-  return `
-    query {
-      ${queryName} {
-        rank
-        imdb_id
-        title
-
-        year
-        rating
-        rating_count
-        rating_count_formatted
-        certificate
-        poster
-        duration
-      }
-    }
-  `;
-
-
-};
-
 export const useMovieStore = create((set, get) => ({
     trending: [],
-    contentType: 'movies', // 'movies', 'tv', 'top-rated', 'top-rated-tv', 'top-english', 'bottom'
+    contentType: 'movies',
+    selectedCountry: 'US',
+    searchQuery: '',
+    searchType: 'ALL', 
     isLoading: false,
     error: null,
     fetchTime: 0,
 
+    advanceFilters: {
+        genres: [],
+        languages: [],
+        countries: [],
+        ratingMin: 0,
+        ratingMax: 10,
+        votesMin: 0,
+        yearStart: 1900,
+        yearEnd: 2024,
+        runtimeMin: 0,
+        runtimeMax: 300,
+        titleType: 'movie',
+        adult: 'EXCLUDE',
+        sortBy: 'POPULARITY'
+    },
+
+    personFilters: {
+        birthStart: 1900,
+        birthEnd: 2024,
+        gender: 'MALE',
+        topic: ''
+    },
+
+    setSearchQuery: (query) => {
+        set({ searchQuery: query, contentType: 'search', trending: [] });
+    },
+
+    setSearchType: (type) => {
+        set({ searchType: type });
+    },
+
+    updateAdvanceFilters: (updates) => {
+        set((state) => ({ 
+            advanceFilters: { ...state.advanceFilters, ...updates },
+            contentType: 'advanced',
+            trending: [] 
+        }));
+    },
+
+    updatePersonFilters: (updates) => {
+        set((state) => ({ 
+            personFilters: { ...state.personFilters, ...updates },
+            contentType: 'person',
+            trending: [] 
+        }));
+    },
+
     setContentType: (type) => {
-        if (get().contentType === type) return;
+        if (get().contentType === type && type !== 'search') return;
         set({ contentType: type, trending: [] });
-        get().fetchTrending();
+    },
+
+    setSelectedCountry: (country) => {
+        set({ selectedCountry: country, trending: [] });
     },
 
     fetchTrending: async () => {
-        const { contentType, trending } = get();
-        if (trending.length > 0) return;
-
+        const { contentType, selectedCountry, searchQuery, advanceFilters, personFilters, isLoading } = get();
+        
+        // Prevent overlapping fetches for the same category
         set({ isLoading: true, error: null });
         const start = Date.now();
+
+        let resultKey = "trendingMovies";
+        let args = "";
+
+        switch (contentType) {
+            case 'movies': resultKey = "trendingMovies"; break;
+            case 'tv': resultKey = "trendingTVShows"; break;
+            case 'top-rated': resultKey = "topRatedMovies"; break;
+            case 'top-rated-tv': resultKey = "topRatedTVShows"; break;
+            case 'top-english': resultKey = "topEnglishMovies"; break;
+            case 'bottom': resultKey = "bottomMovies"; break;
+            case 'by-country': 
+                resultKey = "topRatedByCountry"; 
+                args = `(countryCode: "${selectedCountry}")`; 
+                break;
+            case 'search': 
+                resultKey = "searchMovies"; 
+                args = `(query: "${searchQuery}")`; 
+                break;
+            case 'advanced':
+                resultKey = "advancedSearch";
+                const filterStr = JSON.stringify(advanceFilters).replace(/"([^"]+)":/g, '$1:');
+                args = `(filters: ${filterStr})`;
+                break;
+            case 'person':
+                resultKey = "personSearch";
+                const personStr = JSON.stringify(personFilters).replace(/"([^"]+)":/g, '$1:');
+                args = `(filters: ${personStr})`;
+                break;
+        }
+
+        const GQL_QUERY = `
+            query {
+                ${resultKey}${args} {
+                    rank
+                    imdb_id
+                    title
+                    year
+                    rating
+                    rating_count
+                    rating_count_formatted
+                    certificate
+                    poster
+                    duration
+                    genres
+                    description
+                }
+            }
+        `;
 
         try {
             const response = await fetch(GRAPHQL_URL, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ query: GET_TRENDING(contentType) }),
+                body: JSON.stringify({ query: GQL_QUERY }),
             });
 
-            if (!response.ok) {
-                throw new Error(`Server Error: ${response.status}`);
-            }
+            if (!response.ok) throw new Error(`Server Error: ${response.status}`);
 
             const { data, errors } = await response.json();
-
-            if (errors) {
-                throw new Error(errors[0].message);
-            }
+            if (errors) throw new Error(errors[0].message);
 
             const end = Date.now();
-            const timeTaken = (end - start) / 1000;
-            
-            const queryMap = {
-                'movies': 'trendingMovies',
-                'tv': 'trendingTVShows',
-                'top-rated': 'topRatedMovies',
-                'top-rated-tv': 'topRatedTVShows',
-                'top-english': 'topEnglishMovies',
-                'bottom': 'bottomMovies'
-            };
-            const resultKey = queryMap[contentType];
-
             set({ 
-                trending: data[resultKey], 
+                trending: data[resultKey] || [], 
                 isLoading: false, 
-                fetchTime: timeTaken 
+                fetchTime: (end - start) / 1000 
             });
-            console.log(`Movie Store: ${contentType} Loaded in ${timeTaken}s!`);
         } catch (err) {
             set({ error: err.message, isLoading: false });
             console.error("Movie Store Error:", err.message);
         }
-    },
-
-    refreshTrending: () => {
-        set({ trending: [] });
-        get().fetchTrending();
     }
 }));
