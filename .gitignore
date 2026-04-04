@@ -1,0 +1,17 @@
+# Node
+node_modules/
+frontend/dist/
+
+# Python
+backend-api/.venv/
+backend-api/__pycache__/
+*.pyc
+
+# Environment Variables (CRITICAL for Supabase/NVIDIA keys)
+.env
+backend-api/.env
+backend-realtime/.env
+
+# OS files
+.DS_Store
+Thumbs.db
