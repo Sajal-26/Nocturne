@@ -33,7 +33,6 @@ export const DiscoveryGrid = () => {
     const [showFilters, setShowFilters] = useState(false);
 
     useEffect(() => {
-        // Trigger fetch whenever any core parameter changes
         fetchTrending();
     }, [contentType, selectedCountry, searchQuery, advanceFilters, personFilters]);
 
@@ -45,7 +44,6 @@ export const DiscoveryGrid = () => {
         updatePersonFilters({ [key]: value });
     };
 
-    // Re-introduce client-side filtering for Search/Suggestion results
     const filteredTrending = trending.filter(item => {
         if (contentType !== 'search' || searchType === 'ALL') return true;
         if (searchType === 'MOVIE') return item.certificate && (item.certificate.includes('MOVIE') || item.certificate.includes('FEATURE'));
@@ -54,19 +52,51 @@ export const DiscoveryGrid = () => {
         return true;
     });
 
+    const SkeletonCard = () => (
+        <div className="group relative flex flex-col h-full animate-pulse">
+            <div className="relative aspect-[2/3] rounded-[1.5rem] bg-white/[0.03] border border-white/5 overflow-hidden">
+                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/[0.04] to-transparent shimmer-trace" />
+                <div className="absolute top-4 right-4 h-10 w-10 rounded-full bg-white/5 border border-white/5" />
+                <div className="absolute bottom-5 left-5 right-5 space-y-3">
+                    <div className="flex gap-2">
+                        <div className="h-4 w-12 rounded-full bg-white/5" />
+                        <div className="h-4 w-12 rounded-full bg-white/5" />
+                    </div>
+                    <div className="h-6 w-3/4 rounded-lg bg-white/5" />
+                    <div className="h-3 w-1/4 rounded-md bg-white/5" />
+                </div>
+            </div>
+            <div className="pt-4 px-2 space-y-2">
+                <div className="h-2.5 w-full rounded-full bg-white/5" />
+                <div className="h-2.5 w-2/3 rounded-full bg-white/5" />
+            </div>
+        </div>
+    );
+
     if (isLoading) return (
-        <div className="flex flex-col items-center justify-center min-h-screen bg-black text-white">
-            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-emerald-500 mb-4 shadow-[0_0_20px_rgba(16,185,129,0.3)]"></div>
-            <p className="text-xl font-light tracking-[0.2em] uppercase">Decrypting Intelligence...</p>
+        <div className="min-h-screen text-white p-6 md:p-10">
+            <div className="max-w-7xl mx-auto">
+                <div className="h-16 w-1/3 bg-white/5 rounded-2xl mb-12 animate-pulse" />
+                <div className="flex gap-3 mb-12">
+                    {[1,2,3,4,5].map(i => <div key={i} className="h-10 w-24 rounded-full bg-white/5 animate-pulse" />)}
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-8">
+                    {Array.from({ length: 15 }).map((_, i) => <SkeletonCard key={i} />)}
+                </div>
+            </div>
+            <style>{`
+                @keyframes shimmer { 0% { transform: translateX(-100%); } 100% { transform: translateX(100%); } }
+                .shimmer-trace { animation: shimmer 2.5s infinite linear; }
+            `}</style>
         </div>
     );
 
     return (
-        <div className="min-h-screen bg-[#0a0a0a] text-white p-8">
-            <div className="flex flex-col mb-12 border-b border-white/10 pb-8 space-y-6">
-                <div className="flex flex-col md:flex-row justify-between items-start md:items-center w-full">
-                    <div className="flex-1">
-                        <h1 className="text-5xl font-black tracking-tighter uppercase mb-2">
+        <div className="min-h-screen text-white p-6 md:p-10">
+            <div className="max-w-7xl mx-auto mb-12">
+                <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6 mb-10">
+                    <div>
+                        <h1 className="text-6xl font-black tracking-tighter uppercase mb-3 text-glow">
                             {contentType === 'movies' && <>Trending <span className="text-emerald-500">Cinema</span></>}
                             {contentType === 'tv' && <>TV <span className="text-emerald-500">Intelligence</span></>}
                             {contentType === 'advanced' && <>Advanced <span className="text-emerald-500">Vault</span></>}
@@ -74,136 +104,118 @@ export const DiscoveryGrid = () => {
                             {contentType === 'by-country' && <>Global <span className="text-emerald-500">Hub</span></>}
                             {contentType === 'search' && <>Search <span className="text-emerald-500">Results</span></>}
                         </h1>
-                        <p className="text-zinc-500 uppercase tracking-[0.3em] text-[10px] font-medium">Real-time IMDb Intelligence Feed</p>
+                        <div className="flex items-center gap-3">
+                            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_8px_rgba(16,185,129,0.8)]"></span>
+                            <p className="text-white/40 uppercase tracking-[0.4em] text-[10px] font-bold">Live Intelligence Stream</p>
+                        </div>
                     </div>
 
-                    <div className="flex flex-col items-end space-y-4">
-                        <div className="flex items-center space-x-3">
-                            <div className="relative w-72 group">
-                                <input 
-                                    type="text"
-                                    placeholder="SEARCH ARCHIVE..."
-                                    defaultValue={searchQuery}
-                                    onKeyDown={(e) => { 
-                                        if (e.key === 'Enter') setSearchQuery(e.target.value); 
-                                    }}
-                                    className="w-full bg-white/5 border border-white/10 rounded-full py-2 pl-10 pr-4 text-[10px] font-bold uppercase tracking-[0.2em] outline-none focus:border-emerald-500 transition-all placeholder:text-zinc-700"
-                                />
-                                <div className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-600 group-focus-within:text-emerald-500">
-                                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
-                                </div>
-                            </div>
-                            <button 
-                                onClick={() => setShowFilters(!showFilters)}
-                                className={`p-2 rounded-full border transition-all ${showFilters ? 'bg-emerald-500 border-emerald-500 text-black shadow-[0_0_15px_rgba(16,185,129,0.3)]' : 'border-white/10 text-white hover:border-emerald-500/50'}`}
-                            >
-                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" /></svg>
-                            </button>
-                        </div>
-
-                        {contentType === 'search' && (
-                            <div className="flex bg-white/5 p-1 rounded-lg border border-white/10 backdrop-blur-sm">
-                                {['ALL', 'MOVIE', 'TV', 'PERSON'].map((type) => (
-                                    <button
-                                        key={type}
-                                        onClick={() => setSearchType(type)}
-                                        className={`px-3 py-1 rounded-md text-[9px] font-black uppercase tracking-tighter transition-all ${searchType === type ? 'bg-white/10 text-emerald-400' : 'text-zinc-600 hover:text-zinc-400'}`}
-                                    >
-                                        {type}
-                                    </button>
-                                ))}
-                            </div>
-                        )}
+                    <div className="flex items-center gap-3">
+                        <button 
+                            onClick={() => setShowFilters(!showFilters)}
+                            className={`flex items-center gap-2 px-5 py-2.5 rounded-full border transition-all duration-300 font-black text-[10px] uppercase tracking-widest ${
+                                showFilters 
+                                ? 'bg-emerald-500 border-emerald-500 text-black shadow-[0_0_20px_rgba(16,185,129,0.4)]' 
+                                : 'glass text-white/70 hover:text-white hover:border-white/20'
+                            }`}
+                        >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" /></svg>
+                            Filters
+                        </button>
                     </div>
                 </div>
 
                 {showFilters && (
-                    <div className="animate-in fade-in slide-in-from-top-4 duration-500 grid grid-cols-1 md:grid-cols-4 lg:grid-cols-6 gap-6 p-6 bg-white/[0.02] border border-white/5 rounded-3xl backdrop-blur-xl">
-                        <div className="flex flex-col space-y-2">
-                            <label className="text-[9px] font-black uppercase text-emerald-500 tracking-widest">Scope</label>
-                            <select 
-                                value={contentType === 'person' ? 'person' : advanceFilters.titleType}
-                                onChange={(e) => {
-                                    if (e.target.value === 'person') setContentType('person');
-                                    else {
-                                        setContentType('advanced');
-                                        handleFilterChange('titleType', e.target.value);
-                                    }
-                                }}
-                                className="bg-black border border-white/10 rounded-lg p-2 text-[10px] font-bold uppercase outline-none focus:border-emerald-500/50"
-                            >
-                                <option value="movie">Movies</option>
-                                <option value="tvSeries">TV Series</option>
-                                <option value="person">Person / Celeb</option>
-                            </select>
-                        </div>
+                    <div className="glass rounded-[2rem] p-8 mb-10 animate-in fade-in zoom-in-95 duration-500 border-white/5">
+                        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-8">
+                            <div className="space-y-3">
+                                <label className="text-[10px] font-black uppercase text-emerald-500/70 tracking-widest">Category</label>
+                                <select 
+                                    value={contentType === 'person' ? 'person' : advanceFilters.titleType}
+                                    onChange={(e) => {
+                                        if (e.target.value === 'person') setContentType('person');
+                                        else {
+                                            setContentType('advanced');
+                                            handleFilterChange('titleType', e.target.value);
+                                        }
+                                    }}
+                                    className="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-xs font-bold uppercase outline-none focus:border-emerald-500/50 transition-all cursor-pointer"
+                                >
+                                    <option value="movie">Movies</option>
+                                    <option value="tvSeries">TV Series</option>
+                                    <option value="person">Person / Celeb</option>
+                                </select>
+                            </div>
 
-                        {contentType === 'person' ? (
-                            <>
-                                <div className="flex flex-col space-y-2">
-                                    <label className="text-[9px] font-black uppercase text-amber-500 tracking-widest">Era (Born After)</label>
-                                    <input type="number" defaultValue={personFilters.birthStart} onBlur={(e) => handlePersonFilterChange('birthStart', parseInt(e.target.value))} className="bg-black border border-white/10 rounded-lg p-2 text-[10px] font-bold outline-none focus:border-amber-500/50" />
-                                </div>
-                                <div className="flex flex-col space-y-2">
-                                    <label className="text-[9px] font-black uppercase text-amber-500 tracking-widest">Gender</label>
-                                    <select value={personFilters.gender} onChange={(e) => handlePersonFilterChange('gender', e.target.value)} className="bg-black border border-white/10 rounded-lg p-2 text-[10px] font-bold uppercase outline-none focus:border-amber-500/50">
-                                        <option value="MALE">Male</option>
-                                        <option value="FEMALE">Female</option>
-                                    </select>
-                                </div>
-                                <div className="flex flex-col space-y-2">
-                                    <label className="text-[9px] font-black uppercase text-amber-500 tracking-widest">Expertise</label>
-                                    <input type="text" placeholder="e.g. Actor" onBlur={(e) => handlePersonFilterChange('topic', e.target.value)} className="bg-black border border-white/10 rounded-lg p-2 text-[10px] font-bold outline-none focus:border-amber-500/50" />
-                                </div>
-                            </>
-                        ) : (
-                            <>
-                                <div className="flex flex-col space-y-2 lg:col-span-1">
-                                    <label className="text-[9px] font-black uppercase text-emerald-500 tracking-widest">Min Rating: {advanceFilters.ratingMin}</label>
-                                    <input type="range" min="0" max="10" step="0.5" value={advanceFilters.ratingMin} onChange={(e) => handleFilterChange('ratingMin', parseFloat(e.target.value))} className="accent-emerald-500" />
-                                </div>
-                                <div className="flex flex-col space-y-2">
-                                    <label className="text-[9px] font-black uppercase text-emerald-500 tracking-widest">Decade {advanceFilters.yearStart}-{advanceFilters.yearEnd}</label>
-                                    <div className="flex space-x-1">
-                                        <input type="number" value={advanceFilters.yearStart} onChange={(e) => handleFilterChange('yearStart', parseInt(e.target.value))} className="w-1/2 bg-black border border-white/10 rounded-lg p-1 text-[10px] font-bold outline-none" />
-                                        <input type="number" value={advanceFilters.yearEnd} onChange={(e) => handleFilterChange('yearEnd', parseInt(e.target.value))} className="w-1/2 bg-black border border-white/10 rounded-lg p-1 text-[10px] font-bold outline-none" />
+                            {contentType === 'person' ? (
+                                <>
+                                    <div className="space-y-3">
+                                        <label className="text-[10px] font-black uppercase text-amber-500/70 tracking-widest">Born After</label>
+                                        <input type="number" defaultValue={personFilters.birthStart} onBlur={(e) => handlePersonFilterChange('birthStart', parseInt(e.target.value))} className="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-xs font-bold outline-none focus:border-amber-500/50 transition-all" />
                                     </div>
-                                </div>
-                                <div className="flex flex-col space-y-2">
-                                    <label className="text-[9px] font-black uppercase text-emerald-500 tracking-widest">Shadow Filter</label>
-                                    <select value={advanceFilters.adult} onChange={(e) => handleFilterChange('adult', e.target.value)} className="bg-black border border-white/10 rounded-lg p-2 text-[10px] font-bold uppercase outline-none">
-                                        <option value="EXCLUDE">Pure Content</option>
-                                        <option value="INCLUDE">Unrestricted</option>
-                                    </select>
-                                </div>
-                            </>
-                        )}
-                        <div className="flex items-end h-full">
-                            <button onClick={() => { setContentType('advanced'); fetchTrending(); }} className="w-full bg-emerald-500 text-black py-2 rounded-xl text-[10px] font-black uppercase tracking-widest hover:scale-105 active:scale-95 transition-all shadow-[0_0_15px_rgba(16,185,129,0.3)]">Inject Parameters</button>
+                                    <div className="space-y-3">
+                                        <label className="text-[10px] font-black uppercase text-amber-500/70 tracking-widest">Gender</label>
+                                        <select value={personFilters.gender} onChange={(e) => handlePersonFilterChange('gender', e.target.value)} className="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-xs font-bold uppercase outline-none focus:border-amber-500/50 transition-all cursor-pointer">
+                                            <option value="MALE">Male</option>
+                                            <option value="FEMALE">Female</option>
+                                        </select>
+                                    </div>
+                                    <div className="space-y-3">
+                                        <label className="text-[10px] font-black uppercase text-amber-500/70 tracking-widest">Role</label>
+                                        <input type="text" placeholder="e.g. Actor" onBlur={(e) => handlePersonFilterChange('topic', e.target.value)} className="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-xs font-bold outline-none focus:border-amber-500/50 transition-all" />
+                                    </div>
+                                </>
+                            ) : (
+                                <>
+                                    <div className="space-y-3 pb-4">
+                                        <div className="flex justify-between items-center">
+                                            <label className="text-[10px] font-black uppercase text-emerald-500/70 tracking-widest">Rating</label>
+                                            <span className="text-[10px] font-black text-emerald-400">{advanceFilters.ratingMin}+</span>
+                                        </div>
+                                        <input type="range" min="0" max="10" step="0.1" value={advanceFilters.ratingMin} onChange={(e) => handleFilterChange('ratingMin', parseFloat(e.target.value))} className="w-full h-1 bg-white/10 rounded-lg appearance-none cursor-pointer accent-emerald-500" />
+                                    </div>
+                                    <div className="space-y-3">
+                                        <label className="text-[10px] font-black uppercase text-emerald-500/70 tracking-widest">Year Range</label>
+                                        <div className="flex gap-2">
+                                            <input type="number" value={advanceFilters.yearStart} onChange={(e) => handleFilterChange('yearStart', parseInt(e.target.value))} className="w-1/2 bg-white/5 border border-white/10 rounded-xl p-3 text-xs font-bold outline-none focus:border-emerald-500/50 transition-all" />
+                                            <input type="number" value={advanceFilters.yearEnd} onChange={(e) => handleFilterChange('yearEnd', parseInt(e.target.value))} className="w-1/2 bg-white/5 border border-white/10 rounded-xl p-3 text-xs font-bold outline-none focus:border-emerald-500/50 transition-all" />
+                                        </div>
+                                    </div>
+                                    <div className="space-y-3">
+                                        <label className="text-[10px] font-black uppercase text-emerald-500/70 tracking-widest">Shadow Filter</label>
+                                        <select value={advanceFilters.adult} onChange={(e) => handleFilterChange('adult', e.target.value)} className="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-xs font-bold uppercase outline-none focus:border-emerald-500/50 transition-all cursor-pointer">
+                                            <option value="EXCLUDE">Pure Content</option>
+                                            <option value="INCLUDE">Unrestricted</option>
+                                        </select>
+                                    </div>
+                                </>
+                            )}
+                            <div className="flex items-end">
+                                <button onClick={() => { setContentType('advanced'); fetchTrending(); }} className="w-full bg-emerald-500 text-black py-3 rounded-xl text-[10px] font-black uppercase tracking-widest hover:scale-[1.02] active:scale-95 transition-all shadow-[0_10px_20px_rgba(16,185,129,0.3)]">Apply Filters</button>
+                            </div>
                         </div>
                     </div>
                 )}
 
-                <div className="flex flex-wrap gap-2 overflow-x-auto py-2 scrollbar-hide">
+                <div className="flex flex-wrap gap-3 mb-12">
                     {[
                         { id: 'movies', label: 'Movies' },
                         { id: 'tv', label: 'TV Shows' },
-                        { id: 'top-rated', label: 'Top Movies' },
-                        { id: 'top-rated-tv', label: 'Top TV' },
-                        { id: 'top-english', label: 'English Top' },
-                        { id: 'by-country', label: 'By Region' },
-                        { id: 'bottom', label: 'Shadow Feed' },
+                        { id: 'top-rated', label: 'Top Rated' },
+                        { id: 'top-english', label: 'English Hits' },
+                        { id: 'by-country', label: 'Regional' },
                     ].map(btn => (
                         <button 
                             key={btn.id}
                             onClick={() => {
                                 setContentType(btn.id);
-                                if (searchQuery) setSearchQuery(''); // Clear search when switching categories
+                                if (searchQuery) setSearchQuery('');
                             }}
-                            className={`px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all duration-300 border
-                            ${contentType === btn.id ? 
-                                `bg-emerald-500 border-emerald-500 text-black shadow-[0_0_20px_rgba(16,185,129,0.4)]` : 
-                                'bg-white/5 border-white/10 text-zinc-500 hover:text-white hover:border-white/20'}`}
+                            className={`px-6 py-2.5 rounded-full text-[10px] font-bold uppercase tracking-widest transition-all duration-300 border ${
+                                contentType === btn.id 
+                                ? 'bg-white text-black border-white shadow-[0_0_20px_rgba(255,255,255,0.2)]' 
+                                : 'glass text-white/50 border-white/5 hover:text-white hover:border-white/20'
+                            }`}
                         >
                             {btn.label}
                         </button>
@@ -213,58 +225,75 @@ export const DiscoveryGrid = () => {
                         <select 
                             value={selectedCountry}
                             onChange={(e) => setSelectedCountry(e.target.value)}
-                            className="bg-[#1a1a1a] text-zinc-300 text-[10px] font-bold uppercase tracking-widest px-4 py-2 rounded-xl border border-white/10 outline-none focus:border-emerald-500/50 transition-all"
+                            className="bg-white/5 glass text-white text-[10px] font-bold uppercase tracking-widest px-6 py-2.5 rounded-full border border-white/10 outline-none focus:border-emerald-500/50 transition-all cursor-pointer"
                         >
-                            {COUNTRIES.map(c => <option key={c.code} value={c.code}>{c.flag} {c.name}</option>)}
+                            {COUNTRIES.map(c => <option key={c.code} value={c.code} className="bg-black">{c.flag} {c.name}</option>)}
                         </select>
                     )}
                 </div>
-            </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-8 lg:gap-10">
-                {filteredTrending.map((item, index) => (
-                    <div 
-                        key={`${item.imdb_id}-${index}`} 
-                        className={`group relative bg-[#121212] rounded-[1.5rem] overflow-hidden transition-all duration-500 hover:scale-[1.03] hover:shadow-[0_40px_80px_rgba(0,0,0,0.8)] border border-white/5 
-                            ${item.certificate === 'PERSON' ? 'border-amber-500/20' : 'hover:border-emerald-500/30'}`}
-                    >
-                        <div className="relative aspect-[2/3] overflow-hidden">
-                            {item.poster ? (
-                                <img src={item.poster} alt={item.title} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" loading="lazy" />
-                            ) : (
-                                <div className="w-full h-full bg-zinc-900 flex items-center justify-center text-zinc-700 text-[10px] tracking-widest uppercase">No Visual</div>
-                            )}
-                            <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent opacity-90" />
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-8">
+                    {filteredTrending.map((item, index) => (
+                        <div 
+                            key={`${item.imdb_id}-${index}`} 
+                            className="group relative flex flex-col h-full animate-in fade-in slide-in-from-bottom-8 duration-700 fill-mode-both"
+                            style={{ animationDelay: `${index * 50}ms` }}
+                        >
+                            <div className="relative aspect-[2/3] rounded-[1.5rem] overflow-hidden glass border-white/5 shadow-2xl transition-all duration-500 group-hover:scale-[1.02] group-hover:shadow-[0_20px_40px_rgba(0,0,0,0.6)] group-hover:border-emerald-500/30">
+                                {item.poster ? (
+                                    <img 
+                                        src={item.poster} 
+                                        alt={item.title} 
+                                        className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" 
+                                        loading="lazy" 
+                                    />
+                                ) : (
+                                    <div className="w-full h-full bg-white/5 flex flex-col items-center justify-center text-white/20 text-[9px] tracking-widest uppercase gap-3">
+                                        <svg className="w-8 h-8 opacity-20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                                        No Visual Data
+                                    </div>
+                                )}
+                                
+                                <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent opacity-80" />
+                                
+                                <div className="absolute top-4 right-4">
+                                    <div className={`h-10 w-10 rounded-full glass border-white/10 flex items-center justify-center font-black text-xs ${
+                                        item.certificate === 'PERSON' ? 'text-amber-400' : 'text-emerald-400'
+                                    }`}>
+                                        {item.rating || '★'}
+                                    </div>
+                                </div>
+
+                                <div className="absolute bottom-5 left-5 right-5">
+                                    <div className="flex flex-wrap gap-1.5 mb-2.5">
+                                        {(item.genres || []).slice(0, 2).map(g => (
+                                            <span key={g} className="bg-white/10 backdrop-blur-md text-white/90 text-[8px] font-black uppercase px-2.5 py-1 rounded-full border border-white/10">{g}</span>
+                                        ))}
+                                    </div>
+                                    <h3 className="text-lg font-black tracking-tighter uppercase leading-none mb-1 text-white group-hover:text-emerald-400 transition-colors line-clamp-2">{item.title}</h3>
+                                    <p className="text-[10px] font-bold text-white/40 uppercase tracking-widest">{item.year || '----'}</p>
+                                </div>
+                            </div>
                             
-                            <div className="absolute bottom-6 left-6 right-6">
-                                <div className="flex flex-wrap gap-1 mb-2">
-                                    {(item.genres || []).slice(0, 2).map(g => (
-                                        <span key={g} className="bg-emerald-500/20 text-emerald-400 text-[7px] font-black uppercase px-2 py-0.5 rounded-full border border-emerald-500/20">{g}</span>
-                                    ))}
-                                </div>
-                                <h3 className="text-base font-black tracking-tighter uppercase leading-tight mb-1 group-hover:text-emerald-400 transition-colors line-clamp-2">{item.title}</h3>
-                                <p className="text-[9px] font-bold text-zinc-500 uppercase tracking-widest">{item.year || '----'}</p>
-                            </div>
-
-                            <div className="absolute top-4 right-4">
-                                <div className={`h-8 w-8 rounded-full backdrop-blur-xl border border-white/10 flex flex-col items-center justify-center
-                                    ${item.certificate === 'PERSON' ? 'bg-amber-500/30 text-amber-400' : 'bg-emerald-500/30 text-emerald-400'}`}>
-                                    <span className="text-[9px] font-black leading-none">{item.rating || '★'}</span>
-                                </div>
+                            <div className="pt-4 px-2">
+                                <p className="text-[9px] text-white/30 line-clamp-2 uppercase font-black tracking-wide leading-relaxed group-hover:text-white/50 transition-colors">
+                                    {item.description || "INTELLIGENCE DECRYPTED. STANDBY FOR FEED."}
+                                </p>
                             </div>
                         </div>
+                    ))}
+                </div>
 
-                        <div className="px-5 py-4 bg-zinc-900/40">
-                            <p className="text-[8px] text-zinc-500 line-clamp-2 uppercase font-bold tracking-wide leading-relaxed">
-                                {item.description || "Metadata decrypted. Feed operational."}
-                            </p>
+                {filteredTrending.length === 0 && (
+                    <div className="flex flex-col items-center justify-center py-32 text-center">
+                        <div className="w-16 h-16 rounded-full glass flex items-center justify-center mb-6 border-white/5 text-white/20">
+                            <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
                         </div>
+                        <h2 className="text-xl font-black uppercase tracking-widest text-white/20">No Intelligence Found</h2>
+                        <p className="text-xs text-white/10 uppercase tracking-widest mt-2">Try adjusting your spectral orientation</p>
                     </div>
-                ))}
+                )}
             </div>
-            {filteredTrending.length === 0 && (
-                <div className="flex items-center justify-center py-20 text-zinc-700 uppercase tracking-widest font-black text-sm">No Intelligence Found</div>
-            )}
         </div>
     );
 };

@@ -19,8 +19,6 @@ const normalizeCertificate = (cert) => {
         'PG': 'UA',
         'TV-14': 'UA',
         'PG-13': 'UA',
-        'TV-MA': 'A',
-        'R': 'A',
         'NC-17': 'A',
         'X': 'A'
     };
@@ -43,7 +41,6 @@ const formatVotes = (n) => {
 const MOVIE_FIELDS = `
     id
     titleText { text }
-    releaseDate { day month year }
     releaseYear { year }
     ratingsSummary { aggregateRating voteCount }
     primaryImage { url }
@@ -51,10 +48,6 @@ const MOVIE_FIELDS = `
     certificate { rating }
     titleType { text id }
     genres { genres { text } }
-    principalCredits {
-        role { text }
-        credits { name { nameText { text } id } }
-    }
 `;
 
 const PERSON_FIELDS = `
@@ -74,6 +67,35 @@ const PERSON_FIELDS = `
     }
 `;
 
+export const getBackdropsBatch = async (ids) => {
+    if (!ids || ids.length === 0) return [];
+    const richBackdrops = await Promise.all(ids.map(async (id) => {
+        const query = `
+        query {
+          title(id: "${id}") {
+            images(first: 5, filter: { imageType: STILL_FRAME }) {
+              edges {
+                node {
+                  url
+                }
+              }
+            }
+          }
+        }
+        `;
+        try {
+            const response = await fetch(IMDB_GQL_URL, {
+                method: "POST",
+                headers: HEADERS,
+                body: JSON.stringify({ query })
+            });
+            const json = await response.json();
+            const firstStill = json.data?.title?.images?.edges?.[0]?.node?.url;
+            return { imdb_id: id, backdrop: firstStill || null };
+        } catch (e) { return null; }
+    }));
+    return richBackdrops.filter(Boolean);
+};
 
 export const getTrendingMovies = async () => {
     const query = `
@@ -81,7 +103,16 @@ export const getTrendingMovies = async () => {
       chartTitles(first: 100, chart: { chartType: MOST_POPULAR_MOVIES }) {
         edges {
           node {
-            ${MOVIE_FIELDS}
+            id
+            titleText { text }
+            releaseYear { year }
+            ratingsSummary { aggregateRating voteCount }
+            primaryImage { url }
+            runtime { seconds }
+            certificate { rating }
+            titleType { text id }
+            genres { genres { text } }
+            plot { plotText { plainText } }
           }
         }
       }
@@ -95,34 +126,38 @@ export const getTrendingMovies = async () => {
             body: JSON.stringify({ query })
         });
 
-        if (!response.ok) {
-            throw new Error(`IMDb API Error Status: ${response.status}`);
-        }
-
+        if (!response.ok) throw new Error(`Status: ${response.status}`);
         const json = await response.json();
         if (!json.data) return [];
 
-        return json.data.chartTitles.edges.map((item, index) => {
+        const movies = json.data.chartTitles.edges.map((item, index) => {
             const node = item.node;
-            const seconds = node.runtime?.seconds || null;
-            const voteCount = node.ratingsSummary?.voteCount || 0;
-
             return {
                 rank: index + 1,
                 imdb_id: node.id,
                 title: node.titleText?.text || "Unknown",
                 year: node.releaseYear?.year || null,
                 rating: node.ratingsSummary?.aggregateRating || null,
-                rating_count: voteCount,
-                rating_count_formatted: formatVotes(voteCount),
+                rating_count: node.ratingsSummary?.voteCount || 0,
+                rating_count_formatted: formatVotes(node.ratingsSummary?.voteCount || 0),
                 certificate: normalizeCertificate(node.certificate?.rating),
                 poster: node.primaryImage?.url || null,
-                duration: formatDuration(seconds)
+                backdrop: null,
+                duration: formatDuration(node.runtime?.seconds),
+                genres: node.genres?.genres?.map(g => g.text) || [],
+                description: node.plot?.plotText?.plainText || "Synchronizing Neural Feed..."
             };
         });
 
+        const topIds = movies.slice(0, 3).map(m => m.imdb_id);
+        const backdrops = await getBackdropsBatch(topIds);
+        
+        return movies.map(movie => {
+            const enriched = backdrops.find(b => b.imdb_id === movie.imdb_id);
+            return enriched ? { ...movie, backdrop: enriched.backdrop } : movie;
+        });
+
     } catch (err) {
-        console.error("IMDb Movies Fetch Failed:", err.message);
         return [];
     }
 };
@@ -139,7 +174,10 @@ export const getTrendingTVShows = async () => {
             ratingsSummary { aggregateRating voteCount }
             certificate { rating }
             titleType { text }
+            runtime { seconds }
             primaryImage { url }
+            genres { genres { text } }
+            plot { plotText { plainText } }
           }
         }
       }
@@ -153,32 +191,38 @@ export const getTrendingTVShows = async () => {
             body: JSON.stringify({ query })
         });
 
-        if (!response.ok) {
-            throw new Error(`IMDb API Error Status: ${response.status}`);
-        }
-
+        if (!response.ok) throw new Error(`Status: ${response.status}`);
         const json = await response.json();
         if (!json.data) return [];
 
-        return json.data.chartTitles.edges.map((item, index) => {
+        const tvShows = json.data.chartTitles.edges.map((item, index) => {
             const node = item.node;
-            const voteCount = node.ratingsSummary?.voteCount || 0;
-
             return {
                 rank: index + 1,
                 imdb_id: node.id,
                 title: node.titleText?.text || "Unknown",
                 year: node.releaseYear?.year || null,
                 rating: node.ratingsSummary?.aggregateRating || null,
-                rating_count: voteCount,
-                rating_count_formatted: formatVotes(voteCount),
+                rating_count: node.ratingsSummary?.voteCount || 0,
+                rating_count_formatted: formatVotes(node.ratingsSummary?.voteCount || 0),
                 certificate: normalizeCertificate(node.certificate?.rating),
                 poster: node.primaryImage?.url || null,
-                duration: node.titleType?.text || "TV Series"
+                backdrop: null,
+                duration: formatDuration(node.runtime?.seconds) || node.titleType?.text || "TV Series",
+                genres: node.genres?.genres?.map(g => g.text) || [],
+                description: node.plot?.plotText?.plainText || "Synchronizing Neural Feed..."
             };
         });
+
+        const topIds = tvShows.slice(0, 3).map(m => m.imdb_id);
+        const backdrops = await getBackdropsBatch(topIds);
+        
+        return tvShows.map(tv => {
+            const enriched = backdrops.find(b => b.imdb_id === tv.imdb_id);
+            return enriched ? { ...tv, backdrop: enriched.backdrop } : tv;
+        });
+
     } catch (err) {
-        console.error("IMDb TV Fetch Failed:", err.message);
         return [];
     }
 };
@@ -209,10 +253,7 @@ export const getTopRatedMovies = async () => {
             body: JSON.stringify({ query })
         });
 
-        if (!response.ok) {
-            throw new Error(`IMDb API Error Status: ${response.status}`);
-        }
-
+        if (!response.ok) throw new Error(`Status: ${response.status}`);
         const json = await response.json();
         if (!json.data) return [];
 
@@ -235,14 +276,11 @@ export const getTopRatedMovies = async () => {
             };
         });
     } catch (err) {
-        console.error("IMDb Top Rated Fetch Failed:", err.message);
         return [];
     }
 };
 
-
 export const getTopRatedTVShows = async () => {
-
     const query = `
     query {
       chartTitles(first: 250, chart: { chartType: TOP_RATED_TV_SHOWS }) {
@@ -268,9 +306,7 @@ export const getTopRatedTVShows = async () => {
             body: JSON.stringify({ query })
         });
 
-        if (!response.ok) {
-            throw new Error(`IMDb API Error Status: ${response.status}`);
-        }
+        if (!response.ok) throw new Error(`Status: ${response.status}`);
 
         const json = await response.json();
         if (!json.data) return [];
@@ -278,8 +314,6 @@ export const getTopRatedTVShows = async () => {
         return json.data.chartTitles.edges.map((item, index) => {
             const node = item.node;
             const voteCount = node.ratingsSummary?.voteCount || 0;
-            const seconds = node.runtime?.seconds || null;
-
             return {
                 rank: index + 1,
                 imdb_id: node.id,
@@ -294,13 +328,11 @@ export const getTopRatedTVShows = async () => {
             };
         });
     } catch (err) {
-        console.error("IMDb Top TV Fetch Failed:", err.message);
         return [];
     }
 };
 
 export const getTopEnglishMovies = async () => {
-
     const query = `
     query {
       chartTitles(first: 250, chart: { chartType: TOP_RATED_ENGLISH_MOVIES }) {
@@ -325,11 +357,7 @@ export const getTopEnglishMovies = async () => {
             headers: { ...HEADERS, Referer: "https://www.imdb.com/chart/top-english-movies/" },
             body: JSON.stringify({ query })
         });
-
-        if (!response.ok) {
-            throw new Error(`IMDb API Error Status: ${response.status}`);
-        }
-
+        if (!response.ok) throw new Error(`Status: ${response.status}`);
         const json = await response.json();
         if (!json.data) return [];
 
@@ -352,7 +380,6 @@ export const getTopEnglishMovies = async () => {
             };
         });
     } catch (err) {
-        console.error("IMDb Top English Movies Fetch Failed:", err.message);
         return [];
     }
 };
@@ -382,11 +409,7 @@ export const getBottomMovies = async () => {
             headers: { ...HEADERS, Referer: "https://www.imdb.com/chart/bottom/" },
             body: JSON.stringify({ query })
         });
-
-        if (!response.ok) {
-            throw new Error(`IMDb API Error Status: ${response.status}`);
-        }
-
+        if (!response.ok) throw new Error(`Status: ${response.status}`);
         const json = await response.json();
         if (!json.data) return [];
 
@@ -409,13 +432,11 @@ export const getBottomMovies = async () => {
             };
         });
     } catch (err) {
-        console.error("IMDb Bottom Movies Fetch Failed:", err.message);
         return [];
     }
 };
 
 export const getTopRatedByCountry = async (countryCode = "IN") => {
-    // If India, use the curated Top 250 Indian Movies chart for maximum accuracy with IMDb's official list
     if (countryCode === "IN") {
         const query = `
         query {
@@ -459,13 +480,11 @@ export const getTopRatedByCountry = async (countryCode = "IN") => {
                 });
             }
         } catch (err) {
-            console.error("IMDb Indian Chart Failed, falling back to Search:", err.message);
+            return [];
         }
     }
 
-    // Default: Use Persisted Search Hash for all other countries
     const hash = "0a6de8896f4199e62945d43355755eb9ee4155d6b0d7923b0018d7068e33ccb7";
-
     const variables = {
         "first": 50,
         "locale": "en-US",
@@ -481,10 +500,7 @@ export const getTopRatedByCountry = async (countryCode = "IN") => {
 
     try {
         const response = await fetch(url, { method: "GET", headers: HEADERS });
-        if (!response.ok) {
-            throw new Error(`IMDb Search API Error: ${response.status}`);
-        }
-
+        if (!response.ok) throw new Error(`Status: ${response.status}`);
         const json = await response.json();
         if (!json.data?.advancedTitleSearch) return [];
 
@@ -507,28 +523,24 @@ export const getTopRatedByCountry = async (countryCode = "IN") => {
             };
         });
     } catch (err) {
-        console.error(`IMDb Country Search (${countryCode}) Failed:`, err.message);
         return [];
     }
 };
 
 export const searchMovies = async (query) => {
     if (!query) return [];
-    
     const firstChar = query.charAt(0).toLowerCase();
     const url = `https://v3.sg.media-imdb.com/suggestion/${firstChar}/${encodeURIComponent(query)}.json`;
 
     try {
         const response = await fetch(url);
-        if (!response.ok) throw new Error(`IMDb Suggestion API Error: ${response.status}`);
-        
+        if (!response.ok) throw new Error(`Status: ${response.status}`);
         const json = await response.json();
         const results = json.d || [];
 
         return results.map((item, index) => {
             const isPerson = item.id.startsWith('nm');
             const isCompany = item.id.startsWith('co');
-            
             return {
                 rank: index + 1,
                 imdb_id: item.id,
@@ -543,14 +555,12 @@ export const searchMovies = async (query) => {
             };
         });
     } catch (err) {
-        console.error("IMDb Search Failed:", err.message);
         return [];
     }
 };
 
 export const getAdvancedSearch = async (filters) => {
     const hash = "0a6de8896f4199e62945d43355755eb9ee4155d6b0d7923b0018d7068e33ccb7";
-    
     const variables = {
         "first": 50,
         "locale": "en-US",
@@ -617,7 +627,6 @@ export const getAdvancedSearch = async (filters) => {
             const node = item.node.title;
             const credits = node.principalCredits || [];
             const director = credits.find(c => c.role.text === "Director")?.credits[0]?.name?.nameText?.text || "N/A";
-            
             return {
                 rank: index + 1,
                 imdb_id: node.id,
@@ -634,14 +643,12 @@ export const getAdvancedSearch = async (filters) => {
             };
         });
     } catch (err) {
-        console.error("Advanced Search Failed:", err.message);
         return [];
     }
 };
 
 export const getPersonSearch = async (filters) => {
     const hash = "f98165e8c40113514d50ebc39de628e057dd7646883cecd38dba7f0d2d0e28c3";
-    
     const variables = {
         "first": 50,
         "locale": "en-US",
@@ -692,7 +699,6 @@ export const getPersonSearch = async (filters) => {
             };
         });
     } catch (err) {
-        console.error("Person Search Failed:", err.message);
         return [];
     }
 };

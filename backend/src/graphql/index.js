@@ -22,6 +22,7 @@ export const typeDefs = `#graphql
     rating_count_formatted: String
     certificate: String
     poster: String
+    backdrop: String
     duration: String
     genres: [String]
     description: String
