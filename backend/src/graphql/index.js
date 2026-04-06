@@ -21,14 +21,20 @@ export const typeDefs = `#graphql
     rating_count: Int
     rating_count_formatted: String
     certificate: String
+    isAdult: Boolean
     poster: String
     backdrop: String
     duration: String
+    runtime_minutes: Int
+    titleType: String
     genres: [String]
+    countries: [String]
+    languages: [String]
     description: String
   }
 
   input AdvanceFilters {
+    query: String
     genres: [String]
     languages: [String]
     countries: [String]

@@ -5,6 +5,7 @@ import Footer from './components/Footer';
 import Hero from './components/Hero';
 import Construction from './components/Construction';
 import NotFound from './components/NotFound';
+import SearchPage from './pages/SearchPage';
 
 const Home = () => {
   return (
@@ -53,7 +54,7 @@ function App() {
             <Route path="/trending" element={<Construction title="Trending" />} />
             <Route path="/movies" element={<Construction title="Movies" />} />
             <Route path="/tv-shows" element={<Construction title="TV Shows" />} />
-            <Route path="/discover" element={<Construction title="Discover" />} />
+            <Route path="/discover" element={<SearchPage />} />
             
             {/* Platform Feature Nodes */}
             <Route path="/ai" element={<Construction title="AI Platform" />} />

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Search, User, X, Bell, Sparkles, Users, MessageSquare, ChevronDown, LogOut, Settings, Bookmark, ArrowLeft, Home, Play, Monitor, LayoutGrid, TrendingUp, Compass, Plus } from 'lucide-react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 
 const Navbar = () => {
   const [isScrolled, setIsScrolled] = useState(false);
@@ -12,6 +12,13 @@ const Navbar = () => {
   const profileRef = useRef(null);
   const searchInputRef = useRef(null);
   const navContainerRef = useRef(null);
+  const navigate = useNavigate();
+  const [searchValue, setSearchValue] = useState("");
+  const [suggestions, setSuggestions] = useState([]);
+  const [isSearching, setIsSearching] = useState(false);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const searchTimeoutRef = useRef(null);
+  const searchWrapRef = useRef(null);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -20,6 +27,9 @@ const Navbar = () => {
     const handleClickOutside = (event) => {
       if (profileRef.current && !profileRef.current.contains(event.target)) {
         setIsProfileOpen(false);
+      }
+      if (searchWrapRef.current && !searchWrapRef.current.contains(event.target)) {
+        setShowSuggestions(false);
       }
     };
     window.addEventListener('scroll', handleScroll);
@@ -37,6 +47,47 @@ const Navbar = () => {
   }, [isSearchActive]);
 
   useEffect(() => {
+    if (!searchValue || searchValue.length < 2) {
+      setSuggestions([]);
+      return;
+    }
+
+    if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current);
+
+    searchTimeoutRef.current = setTimeout(async () => {
+      setIsSearching(true);
+      try {
+        const response = await fetch("http://localhost:4000/graphql", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            query: `
+              query SearchMovies($q: String!) {
+                searchMovies(query: $q) {
+                  imdb_id
+                  title
+                  year
+                  poster
+                  certificate
+                }
+              }
+            `,
+            variables: { q: searchValue }
+          })
+        });
+        const result = await response.json();
+        setSuggestions(result.data?.searchMovies?.slice(0, 5) || []);
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setIsSearching(false);
+      }
+    }, 400);
+
+    return () => clearTimeout(searchTimeoutRef.current);
+  }, [searchValue]);
+
+  useEffect(() => {
     const activeEl = navContainerRef.current?.querySelector(`[data-path="${location.pathname}"]`);
     if (activeEl) {
       setActiveRect({
@@ -50,7 +101,6 @@ const Navbar = () => {
 
   const primaryLinks = [
     { name: 'Home', path: '/', icon: <Home size={20} /> },
-    { name: 'Trending', path: '/trending', icon: <TrendingUp size={20} /> },
     { name: 'Movies', path: '/movies', icon: <Play size={20} /> },
     { name: 'TV Shows', path: '/tv-shows', icon: <Monitor size={20} /> },
     { name: 'Discover', path: '/discover', icon: <Compass size={20} /> }
@@ -133,22 +183,75 @@ const Navbar = () => {
                   ))}
                 </div>
 
-                <div className="hidden sm:flex items-center bg-white/[0.03] backdrop-blur-2xl rounded-full px-4 py-2 border border-white/5 focus-within:border-emerald-500/30 transition-all duration-500 group shadow-lg hover:bg-white/[0.08]">
-                  <Search size={16} className="text-white/20 group-hover:text-emerald-500 transition-colors" />
-                  <input 
-                    type="text" 
-                    placeholder="Deep Search..." 
-                    className="bg-transparent border-none outline-none text-white text-[11px] font-bold px-3 w-20 md:w-28 lg:w-32 xl:w-44 placeholder:text-white/10 placeholder:uppercase transition-all"
-                  />
-                </div>
+                {location.pathname !== '/discover' && (
+                  <div className="relative" ref={searchWrapRef}>
+                    <div className="hidden sm:flex items-center bg-white/[0.03] backdrop-blur-2xl rounded-full px-4 py-2 border border-white/5 focus-within:border-emerald-500/30 transition-all duration-500 group shadow-lg hover:bg-white/[0.08]">
+                      {isSearching ? (
+                        <div className="w-4 h-4 border-2 border-white/20 border-t-emerald-500 rounded-full animate-spin transition-colors" />
+                      ) : (
+                        <Search size={16} className="text-white/20 group-hover:text-emerald-500 transition-colors" />
+                      )}
+                      <input 
+                        type="text" 
+                        placeholder="Deep Search..." 
+                        className="bg-transparent border-none outline-none text-white text-[11px] font-bold px-3 w-20 md:w-28 lg:w-32 xl:w-44 placeholder:text-white/10 placeholder:uppercase transition-all"
+                        value={searchValue}
+                        onFocus={() => setShowSuggestions(true)}
+                        onChange={(e) => {
+                          setSearchValue(e.target.value);
+                          setShowSuggestions(true);
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' && searchValue.trim()) {
+                            setShowSuggestions(false);
+                            navigate(`/discover?q=${encodeURIComponent(searchValue)}`);
+                            setSearchValue("");
+                          }
+                        }}
+                      />
+                    </div>
+                    
+                    {/* Auto-suggestions Dropdown */}
+                    {showSuggestions && suggestions.length > 0 && (
+                      <div className="absolute top-[calc(100%+12px)] right-0 w-[280px] bg-black/80 backdrop-blur-3xl border border-white/10 rounded-2xl p-2 shadow-[0_30px_60px_rgba(0,0,0,0.8)] flex flex-col gap-1 overflow-hidden z-[200] animate-in fade-in slide-in-from-top-2 duration-300">
+                        {suggestions.map(s => (
+                          <button
+                            key={s.imdb_id}
+                            onClick={() => {
+                              setShowSuggestions(false);
+                              setSearchValue('');
+                              navigate(`/discover?q=${encodeURIComponent(s.title)}`);
+                            }}
+                            className="w-full flex items-center gap-3 p-2 rounded-xl hover:bg-white/5 transition-all text-left"
+                          >
+                            <div className="w-10 h-14 bg-white/5 rounded-lg overflow-hidden shrink-0">
+                              {s.poster && <img src={s.poster} alt={s.title} className="w-full h-full object-cover" />}
+                            </div>
+                            <div className="flex flex-col">
+                              <span className="text-[11px] font-black uppercase tracking-[0.05em] text-white line-clamp-1">{s.title}</span>
+                              <div className="flex items-center gap-2 mt-1">
+                                {s.certificate && s.certificate !== 'UNKNOWN' && (
+                                  <span className="text-[8px] font-black uppercase text-emerald-500 bg-emerald-500/10 px-1.5 py-0.5 rounded">{s.certificate}</span>
+                                )}
+                                {s.year && <span className="text-[9px] font-black text-white/30">{s.year}</span>}
+                              </div>
+                            </div>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
 
                 <div className="flex items-center gap-2 md:gap-3">
-                  <button 
-                    onClick={() => setIsSearchActive(true)}
-                    className="p-3 bg-white/5 border border-white/5 rounded-full text-white/40 hover:text-white hover:bg-emerald-500/20 transition-all duration-500 active:scale-90 sm:hidden"
-                  >
-                    <Search size={20} />
-                  </button>
+                  {location.pathname !== '/discover' && (
+                    <button 
+                      onClick={() => setIsSearchActive(true)}
+                      className="p-3 bg-white/5 border border-white/5 rounded-full text-white/40 hover:text-white hover:bg-emerald-500/20 transition-all duration-500 active:scale-90 sm:hidden"
+                    >
+                      <Search size={20} />
+                    </button>
+                  )}
                   
                   <button className="relative p-3 bg-white/5 border border-white/5 rounded-full text-white/30 hover:text-white transition-all duration-500 group active:scale-90">
                     <Bell size={18} className="group-hover:rotate-12 transition-transform" />
@@ -201,7 +304,16 @@ const Navbar = () => {
                 type="text" 
                 placeholder="Searching Nocturne..." 
                 className="bg-transparent border-none outline-none text-white text-base font-black px-4 w-full placeholder:text-white/10 placeholder:uppercase"
-                onBlur={() => { if(!searchInputRef.current.value) setIsSearchActive(false) }}
+                value={searchValue}
+                onChange={(e) => setSearchValue(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && searchValue.trim()) {
+                    navigate(`/search?q=${encodeURIComponent(searchValue)}`);
+                    setSearchValue("");
+                    setIsSearchActive(false);
+                  }
+                }}
+                onBlur={() => { if(!searchValue) setIsSearchActive(false) }}
               />
               <button 
                 onClick={() => setIsSearchActive(false)}
