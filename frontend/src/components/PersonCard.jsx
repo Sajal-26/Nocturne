@@ -9,7 +9,7 @@ const PersonCard = ({ item }) => {
   const glowColor = isCompany ? 'hover:shadow-[0_0_40px_rgba(139,92,246,0.15)] hover:border-violet-500/30' : 'hover:shadow-[0_0_40px_rgba(16,185,129,0.15)] hover:border-emerald-500/30';
 
   return (
-    <div className={`relative aspect-[2/3] group rounded-3xl overflow-hidden cursor-pointer border border-white/5 transition-all duration-500 hover:scale-[1.02] ${glowColor}`}>
+    <div className={`relative aspect-[2/3] group rounded-xl sm:rounded-3xl overflow-hidden cursor-pointer border border-white/5 transition-all duration-500 hover:scale-[1.02] ${glowColor}`}>
       
       {/* Background */}
       {isCompany ? (
@@ -17,6 +17,7 @@ const PersonCard = ({ item }) => {
         <div className="w-full h-full bg-gradient-to-br from-[#0e0e12] to-[#1a1a26] flex items-center justify-center p-8">
           {item.poster ? (
             <img
+              decoding="async"
               src={item.poster}
               alt={item.title}
               className="w-full max-h-40 object-contain drop-shadow-[0_0_20px_rgba(255,255,255,0.1)] transition-transform duration-700 group-hover:scale-110"
@@ -32,6 +33,7 @@ const PersonCard = ({ item }) => {
         // Person: photo background
         item.poster ? (
           <img
+            decoding="async"
             src={item.poster}
             alt={item.title}
             className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
@@ -52,15 +54,15 @@ const PersonCard = ({ item }) => {
 
       {/* Top Left Badge */}
       <div className="absolute top-4 left-4 z-[5]">
-        <span className={`px-3 py-1.5 bg-black/60 backdrop-blur-xl border border-white/10 rounded-xl text-[8px] font-black tracking-widest shadow-lg uppercase flex items-center gap-2 ${badgeColor}`}>
+        <span className={`px-3 py-1.5 bg-black/80 sm:bg-black/60 sm:backdrop-blur-xl border border-white/10 rounded-xl text-[8px] font-black tracking-widest shadow-lg uppercase flex items-center gap-2 ${badgeColor}`}>
           <BadgeIcon size={10} /> {badgeLabel}
         </span>
       </div>
 
       {/* Bottom Content */}
-      <div className="absolute inset-x-0 bottom-0 p-6 z-10 flex flex-col justify-end translate-y-4 group-hover:translate-y-0 transition-transform duration-500">
+      <div className="absolute inset-x-0 bottom-0 p-3 sm:p-6 z-10 flex flex-col justify-end translate-y-4 group-hover:translate-y-0 transition-transform duration-500">
         <div className="space-y-2">
-          <h3 className="text-xl font-black text-white uppercase tracking-wider leading-tight drop-shadow-2xl">
+          <h3 className="text-[11px] font-semibold sm:font-black sm:text-xl text-white sm:uppercase tracking-tight sm:tracking-wider leading-snug drop-shadow-2xl line-clamp-2 opacity-90">
             {item.title}
           </h3>
           <div className="h-0 group-hover:h-auto opacity-0 group-hover:opacity-100 transition-all duration-500 overflow-hidden">

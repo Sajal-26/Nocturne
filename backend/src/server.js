@@ -1,4 +1,4 @@
-import 'dotenv/config';
+import 'dotenv/config'; 
 import express from 'express';
 import { createServer } from 'http';
 import { Server } from 'socket.io';
@@ -8,6 +8,15 @@ import cors from 'cors';
 import pkg from 'body-parser';
 const { json } = pkg;
 import { typeDefs, resolvers } from './graphql/index.js';
+import { getTrendingMovies, getTrendingTVShows } from './services/imdb.js';
+
+const warmCache = async () => {
+    try {
+        await Promise.all([getTrendingMovies(true), getTrendingTVShows(true)]);
+    } catch (e) {
+        console.warn('[CACHE] Pre-warm failed silently:', e.message);
+    }
+};
 
 async function startServer() {
     const app = express();
@@ -21,14 +30,11 @@ async function startServer() {
     });
 
     io.on('connection', (socket) => {
-        console.log(`New Connection: ${socket.id}`);
-        
         socket.on('sync:play', (data) => {
             socket.broadcast.emit('sync:playback', data);
         });
 
         socket.on('disconnect', () => {
-            console.log(`Disconnected: ${socket.id}`);
         });
     });
 
@@ -51,9 +57,8 @@ async function startServer() {
 
     const PORT = process.env.PORT || 4000;
     httpServer.listen(PORT, () => {
-        console.log(`Nocturne Hub Running at:`);
-        console.log(`HTTP/Realtime: http://localhost:${PORT}`);
-        console.log(`GraphQL Server: http://localhost:${PORT}/graphql`);
+        // Pre-warm cache in background — don't block server startup
+        warmCache();
     });
 }
 

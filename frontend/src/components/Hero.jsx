@@ -15,11 +15,11 @@ const Hero = () => {
       try {
         const query = `
           query {
-            trendingMovies { imdb_id title poster backdrop description rating genres year certificate }
-            trendingTVShows { imdb_id title poster backdrop description rating genres year certificate }
+            trendingMovies(enrich: true) { imdb_id title poster backdrop logo description rating genres year certificate }
+            trendingTVShows(enrich: true) { imdb_id title poster backdrop logo description rating genres year certificate }
           }
         `;
-        const res = await axios.post('http://localhost:4000/graphql', { query });
+        const res = await axios.post('/graphql', { query });
         const { trendingMovies, trendingTVShows } = res.data.data;
         const movies = (trendingMovies || []).slice(0, 4).map(i => ({ ...i, type: 'MOVIE' }));
         const tvShows = (trendingTVShows || []).slice(0, 4).map(i => ({ ...i, type: 'TV SERIES' }));
@@ -101,11 +101,19 @@ const Hero = () => {
               visibility: Math.abs(index - currentIndex) <= 1 ? 'visible' : 'hidden'
             }}
           >
+            {/* Mobile: portrait poster */}
             <img 
-              src={item.backdrop || item.poster} 
+              src={item.poster}
               alt=""
-              className={`w-full h-full object-cover transition-transform duration-[24s] ease-out ${isActive ? 'scale-110' : 'scale-100'}`}
-              style={{ objectPosition: window.innerWidth < 768 ? '50% 20%' : '50% 30%' }}
+              className={`md:hidden w-full h-full object-cover transition-transform duration-[24s] ease-out ${isActive ? 'scale-110' : 'scale-100'}`}
+              style={{ objectPosition: '50% 20%' }}
+            />
+            {/* Desktop: wide backdrop */}
+            <img 
+              src={item.backdrop || item.poster}
+              alt=""
+              className={`hidden md:block w-full h-full object-cover transition-transform duration-[24s] ease-out ${isActive ? 'scale-110' : 'scale-100'}`}
+              style={{ objectPosition: '50% 30%' }}
             />
             <div className="absolute inset-0 bg-gradient-to-t from-black via-black/20 to-transparent z-0" />
             <div className="absolute inset-0 bg-gradient-to-b from-black/85 via-transparent to-transparent z-0" />
@@ -130,12 +138,20 @@ const Hero = () => {
               }`}
             >
               <div className="pointer-events-auto flex flex-col items-center md:items-start text-center md:text-left">
-                <h1 
-                  className="text-4xl md:text-6xl lg:text-[5.5rem] font-black italic uppercase leading-[1.1] text-white mb-4 md:mb-8 drop-shadow-[0_10px_30px_rgba(0,0,0,0.5)] line-clamp-2"
-                  style={{ letterSpacing: "-1px" }}
-                >
-                  {item.title}
-                </h1>
+                {item.logo ? (
+                  <img
+                    src={item.logo}
+                    alt={item.title}
+                    className="max-h-28 md:max-h-40 lg:max-h-52 w-auto max-w-[280px] md:max-w-[420px] object-contain drop-shadow-[0_8px_30px_rgba(0,0,0,0.8)] mb-4 md:mb-8"
+                  />
+                ) : (
+                  <h1 
+                    className="text-4xl md:text-6xl lg:text-[5.5rem] font-black italic uppercase leading-[1.1] text-white mb-4 md:mb-8 drop-shadow-[0_10px_30px_rgba(0,0,0,0.5)] line-clamp-2"
+                    style={{ letterSpacing: "-1px" }}
+                  >
+                    {item.title}
+                  </h1>
+                )}
 
                 <div className="flex items-center gap-3 mb-6 flex-wrap justify-center md:justify-start">
                   <span className="px-2.5 py-1 bg-emerald-500/10 border border-emerald-500/30 text-emerald-500 text-[9px] font-black uppercase tracking-[0.2em] rounded">

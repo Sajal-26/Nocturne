@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useMovieStore } from '../store/useMovieStore';
 import MovieCard from '../components/MovieCard';
@@ -6,35 +6,18 @@ import PersonCard from '../components/PersonCard';
 import { 
   Search, Filter, Sliders, Calendar, Star, Clock, 
   ChevronRight, ChevronDown, Check, X, RotateCcw,
-  Film, Monitor, User, Globe, Tag, AlertTriangle, Briefcase
+  Film, Monitor, User, Globe, Tag, AlertTriangle, Briefcase,
+  SlidersHorizontal, CheckSquare, Square
 } from 'lucide-react';
+import SearchableDropdown from '../components/SearchableDropdown';
+import { COUNTRIES } from '../constants/countries';
+import { LANGUAGES } from '../constants/languages';
 
 const GENRES = [
   "Action", "Adventure", "Animation", "Biography", "Comedy", "Crime", 
   "Documentary", "Drama", "Family", "Fantasy", "Film-Noir", "History", 
   "Horror", "Music", "Musical", "Mystery", "Romance", "Sci-Fi", 
   "Short", "Sport", "Thriller", "War", "Western"
-];
-
-const LANGUAGES = [
-  { code: 'en', name: 'English' },
-  { code: 'hi', name: 'Hindi' },
-  { code: 'es', name: 'Spanish' },
-  { code: 'fr', name: 'French' },
-  { code: 'ja', name: 'Japanese' },
-  { code: 'ko', name: 'Korean' },
-  { code: 'te', name: 'Telugu' },
-  { code: 'ta', name: 'Tamil' }
-];
-
-const COUNTRIES = [
-  { code: 'US', name: 'United States' },
-  { code: 'IN', name: 'India' },
-  { code: 'GB', name: 'United Kingdom' },
-  { code: 'FR', name: 'France' },
-  { code: 'ES', name: 'Spain' },
-  { code: 'JP', name: 'Japan' },
-  { code: 'KR', name: 'South Korea' }
 ];
 
 const SORT_OPTIONS = [
@@ -116,6 +99,20 @@ const GlassDropdown = ({ value, options, onChange, dropUp = false }) => {
   );
 };
 
+const COUNTRY_LANG_MAP = {
+  'US': ['en', 'es'], 'GB': ['en'], 'IN': ['hi', 'bn', 'te', 'mr', 'ta', 'ur', 'gu', 'kn', 'ml', 'or', 'pa', 'as', 'sa', 'ks', 'en'],
+  'FR': ['fr'], 'ES': ['es', 'ca', 'eu', 'gl'], 'DE': ['de'], 'IT': ['it'], 'JP': ['ja'], 'CN': ['zh'], 'KR': ['ko'],
+  'RU': ['ru'], 'BR': ['pt'], 'MX': ['es'], 'AR': ['es'], 'CO': ['es'], 'TR': ['tr'], 'SA': ['ar'], 'AE': ['ar'],
+  'EG': ['ar'], 'PK': ['ur', 'pa', 'sd', 'ps', 'en'], 'BD': ['bn'], 'ID': ['id'], 'TH': ['th'], 'VN': ['vi'],
+  'PH': ['tl', 'en'], 'MY': ['ms', 'en'], 'SG': ['en', 'ms', 'zh', 'ta'], 'AU': ['en'], 'CA': ['en', 'fr'],
+  'NL': ['nl'], 'BE': ['nl', 'fr', 'de'], 'CH': ['de', 'fr', 'it', 'rm'], 'AT': ['de'], 'GR': ['el'],
+  'PL': ['pl'], 'PT': ['pt'], 'SE': ['sv'], 'NO': ['no', 'nb', 'nn'], 'DK': ['da'], 'FI': ['fi'],
+  'IL': ['he', 'ar'], 'ZA': ['en', 'af', 'zu', 'xh'], 'NG': ['en', 'ha', 'ig', 'yo'], 'KE': ['sw', 'en'],
+  'ET': ['am'], 'TZ': ['sw'], 'UA': ['uk', 'ru'], 'RO': ['ro'], 'HU': ['hu'], 'CZ': ['cs'], 'IR': ['fa'],
+  'AF': ['ps', 'fa'], 'KZ': ['kk', 'ru'], 'UZ': ['uz'], 'PK': ['ur'], 'LK': ['si', 'ta'], 'NP': ['ne'],
+  'MM': ['my'], 'KH': ['km'], 'LA': ['lo'], 'MN': ['mn'], 'IE': ['en', 'ga']
+};
+
 const SearchPage = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const query = searchParams.get('q') || '';
@@ -128,18 +125,36 @@ const SearchPage = () => {
     advanceFilters,
     updateAdvanceFilters,
     applyLocalFilters,
-    fetchTime
+    fetchTime,
+    unfilteredResults
   } = useMovieStore();
 
   const [localQuery, setLocalQuery] = useState(query);
   const [visibleCount, setVisibleCount] = useState(24);
+  const [showMobileFilters, setShowMobileFilters] = useState(false);
 
-  // Reset pagination on results change
   useEffect(() => {
     setVisibleCount(24);
   }, [results]);
 
-  // Infinite Scroll listener
+  const filteredLanguages = useMemo(() => {
+    if (!advanceFilters.countries || advanceFilters.countries.length === 0) {
+      return LANGUAGES;
+    }
+
+    const relevantLangCodes = new Set();
+    advanceFilters.countries.forEach(countryCode => {
+      const langs = COUNTRY_LANG_MAP[countryCode] || [];
+      langs.forEach(l => relevantLangCodes.add(l));
+    });
+
+    if (relevantLangCodes.size > 0) {
+      return LANGUAGES.filter(lang => relevantLangCodes.has(lang.code));
+    }
+
+    return LANGUAGES;
+  }, [advanceFilters.countries]);
+
   useEffect(() => {
     const handleScroll = () => {
       if (window.innerHeight + window.scrollY >= document.documentElement.offsetHeight - 1200) {
@@ -153,10 +168,10 @@ const SearchPage = () => {
   useEffect(() => {
     if (query !== advanceFilters.query) {
       updateAdvanceFilters({ query: query || "" });
-      setContentType(query ? 'advanced' : 'mixed');
+      setContentType(query ? 'search' : 'mixed');
       fetchTrending();
-    } else if (results.length === 0) {
-      setContentType(query || Object.values(advanceFilters).some(v => Array.isArray(v) ? v.length > 0 : v && v !== 'ALL' && v !== 'INCLUDE' && v !== 0 && v !== 300 && v !== 2030 && v !== 1900 && v !== 'POPULARITY' && v !== 10) ? 'advanced' : 'mixed');
+    } else if (unfilteredResults.length === 0) {
+      setContentType(query ? 'search' : 'mixed');
       fetchTrending();
     }
   }, [query]);
@@ -183,23 +198,19 @@ const SearchPage = () => {
       ratingMax: 10,
       yearStart: 1900,
       yearEnd: 2030,
+      runtimeMin: 0,
+      runtimeMax: 300,
+      votesMin: 0,
       adult: 'INCLUDE',
       titleType: 'ALL'
     });
-    if (advanceFilters.query) {
-      applyLocalFilters();
-    } else {
-      fetchTrending();
-    }
   };
 
   return (
     <div className="pt-24 md:pt-32 min-h-screen px-4 md:px-12 pb-20">
-      {/* Search Header */}
       <div className="max-w-[1400px] mx-auto mb-12">
-        <div className="flex flex-col md:flex-row md:items-end justify-between gap-8">
+        <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
           <div className="flex-grow max-w-4xl">
-
             <div className="relative group">
               <Search size={18} className="absolute left-5 top-1/2 -translate-y-1/2 text-white/20 group-focus-within:text-emerald-500 transition-colors" />
               <input 
@@ -211,37 +222,223 @@ const SearchPage = () => {
               />
             </div>
           </div>
-          
-          <div className="flex items-center gap-4 shrink-0">
-            <div className="flex items-center gap-4">
-              <span className="hidden lg:block text-[9px] font-black text-white/20 uppercase tracking-[0.2em] whitespace-nowrap">Sort By</span>
-              <div className="w-[180px]">
-                <GlassDropdown 
-                  value={advanceFilters.sortBy}
-                  options={SORT_OPTIONS.map(opt => ({ value: opt.id, label: opt.name }))}
-                  onChange={(val) => handleFilterUpdate({ sortBy: val })}
+
+          <div className="hidden lg:flex items-center gap-4 shrink-0">
+            <span className="text-[9px] font-black text-white/20 uppercase tracking-[0.2em] whitespace-nowrap">Sort By</span>
+            <div className="w-[180px]">
+              <GlassDropdown 
+                value={advanceFilters.sortBy}
+                options={SORT_OPTIONS.map(opt => ({ value: opt.id, label: opt.name }))}
+                onChange={(val) => handleFilterUpdate({ sortBy: val })}
+              />
+            </div>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-3 mt-4 lg:hidden">
+          <button
+            onClick={() => setShowMobileFilters(prev => !prev)}
+            className={`flex items-center gap-2.5 px-5 py-3 rounded-full border text-[10px] font-black uppercase tracking-widest transition-all duration-300 ${
+              showMobileFilters
+                ? 'bg-emerald-500 border-emerald-500 text-black shadow-[0_0_20px_rgba(16,185,129,0.35)]'
+                : 'bg-black/40 border-white/10 text-white/60 hover:text-white hover:border-white/20 backdrop-blur-xl'
+            }`}
+          >
+            <SlidersHorizontal size={14} />
+            Advanced Filters
+            <ChevronDown
+              size={13}
+              className={`transition-transform duration-300 ${showMobileFilters ? 'rotate-180' : 'rotate-0'}`}
+            />
+          </button>
+
+          <div className="flex-1 min-w-0">
+            <GlassDropdown 
+              value={advanceFilters.sortBy}
+              options={SORT_OPTIONS.map(opt => ({ value: opt.id, label: opt.name }))}
+              onChange={(val) => handleFilterUpdate({ sortBy: val })}
+            />
+          </div>
+        </div>
+
+        <div
+          className={`lg:hidden overflow-hidden transition-all duration-500 ease-[cubic-bezier(0.4,0,0.2,1)] ${
+            showMobileFilters ? 'max-h-[2000px] opacity-100 mt-4' : 'max-h-0 opacity-0 mt-0'
+          }`}
+        >
+          <div className="bg-black/40 border border-white/5 rounded-[2rem] p-6 backdrop-blur-3xl shadow-2xl">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-xs font-black uppercase tracking-[0.3em] text-white italic flex items-center gap-2.5">
+                <SlidersHorizontal size={15} className="text-emerald-500" />
+                Advanced Filters
+              </h3>
+              <button onClick={resetFilters} className="text-white/20 hover:text-emerald-500 transition-colors">
+                <RotateCcw size={15} />
+              </button>
+            </div>
+
+            <div className="mb-6">
+              <label className="text-[9px] font-black uppercase tracking-[0.2em] text-white/30 block mb-3">Content Type</label>
+              <div className="grid grid-cols-2 gap-2">
+                {TITLE_TYPES.map(type => (
+                  <button
+                    key={type.id}
+                    onClick={() => handleFilterUpdate({ titleType: type.id })}
+                    className={`flex items-center justify-center gap-2 px-3 py-3 rounded-2xl border text-[9px] font-black uppercase tracking-[0.1em] transition-all ${
+                      advanceFilters.titleType === type.id 
+                      ? 'bg-emerald-500/10 border-emerald-500/50 text-emerald-400 shadow-[0_0_20px_rgba(16,185,129,0.1)]' 
+                      : 'bg-white/5 border-white/5 text-white/40 hover:border-white/10 hover:bg-white/10 hover:text-white'
+                    }`}
+                  >
+                    {type.icon}
+                    {type.name}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="mb-6">
+              <label className="text-[9px] font-black uppercase tracking-[0.2em] text-white/30 mb-3 flex items-center gap-2">
+                <AlertTriangle size={12} className="text-amber-500" /> Content Rating
+              </label>
+              <div className="flex gap-2 p-1 bg-black/40 rounded-xl">
+                {['EXCLUDE', 'INCLUDE', 'ONLY'].map(v => (
+                  <button
+                    key={v}
+                    onClick={() => handleFilterUpdate({ adult: v })}
+                    className={`flex-1 flex justify-center items-center py-3 rounded-xl border text-[8px] font-black uppercase tracking-widest transition-all ${
+                      advanceFilters.adult === v 
+                      ? 'bg-emerald-500/10 border-emerald-500/50 text-emerald-400' 
+                      : 'bg-white/5 border-white/5 text-white/40 hover:text-white hover:bg-white/10 hover:border-white/10'
+                    }`}
+                  >
+                    {v === 'EXCLUDE' ? 'Strict' : v === 'INCLUDE' ? 'Adults' : 'Only 18+'}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="mb-6">
+              <label className="text-[9px] font-black uppercase tracking-[0.2em] text-white/30 block mb-3">Genres</label>
+              <div className="flex flex-wrap gap-2">
+                {GENRES.slice(0, 12).map(genre => (
+                  <button
+                    key={genre}
+                    onClick={() => {
+                      const newGenres = advanceFilters.genres.includes(genre)
+                        ? advanceFilters.genres.filter(g => g !== genre)
+                        : [...advanceFilters.genres, genre];
+                      handleFilterUpdate({ genres: newGenres });
+                    }}
+                    className={`px-3 py-1.5 rounded-lg border text-[8px] font-black uppercase tracking-[0.1em] transition-all ${
+                      advanceFilters.genres.includes(genre)
+                      ? 'bg-emerald-500/20 border-emerald-500/50 text-emerald-400' 
+                      : 'bg-white/5 border-white/5 text-white/30 hover:border-white/10 hover:text-white'
+                    }`}
+                  >
+                    {genre}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="mb-6">
+              <div className="flex justify-between items-center mb-3">
+                <label className="text-[9px] font-black uppercase tracking-[0.2em] text-white/30">Aggregate Rating</label>
+                <span className="text-[9px] font-black text-emerald-500">{advanceFilters.ratingMin} - {advanceFilters.ratingMax}</span>
+              </div>
+              <input 
+                type="range" min="0" max="10" step="0.1"
+                value={advanceFilters.ratingMin}
+                onChange={(e) => handleFilterUpdate({ ratingMin: parseFloat(e.target.value) })}
+                className="w-full accent-emerald-500"
+              />
+            </div>
+
+            <div className="mb-6">
+              <div className="flex justify-between items-center mb-3">
+                <label className="text-[9px] font-black uppercase tracking-[0.2em] text-white/30">Release Year</label>
+                <span className="text-[9px] font-black text-emerald-500">{advanceFilters.yearStart} - {advanceFilters.yearEnd}</span>
+              </div>
+              <div className="flex gap-3">
+                <input 
+                  type="number" value={advanceFilters.yearStart}
+                  onChange={(e) => handleFilterUpdate({ yearStart: parseInt(e.target.value) })}
+                  className="w-1/2 bg-white/5 border border-white/5 rounded-2xl px-4 py-3 text-[10px] font-black text-white focus:outline-none focus:border-emerald-500/30 focus:bg-white/10 transition-all text-center"
+                />
+                <input 
+                  type="number" value={advanceFilters.yearEnd}
+                  onChange={(e) => handleFilterUpdate({ yearEnd: parseInt(e.target.value) })}
+                  className="w-1/2 bg-white/5 border border-white/5 rounded-2xl px-4 py-3 text-[10px] font-black text-white focus:outline-none focus:border-emerald-500/30 focus:bg-white/10 transition-all text-center"
                 />
               </div>
+            </div>
+
+            <div className="mb-6">
+              <div className="flex justify-between items-center mb-3">
+                <label className="text-[9px] font-black uppercase tracking-[0.2em] text-white/30">Runtime (Mins)</label>
+                <span className="text-[9px] font-black text-emerald-500">{advanceFilters.runtimeMin} - {advanceFilters.runtimeMax}</span>
+              </div>
+              <input 
+                type="range" min="0" max="300" step="5"
+                value={advanceFilters.runtimeMax}
+                onChange={(e) => handleFilterUpdate({ runtimeMax: parseInt(e.target.value) })}
+                className="w-full accent-emerald-500"
+              />
+            </div>
+
+            <div className="flex flex-col gap-1">
+              <SearchableDropdown 
+                label="Country" 
+                placeholder="All Countries"
+                options={COUNTRIES}
+                value={advanceFilters.countries[0] || null}
+                onChange={(newCountry) => {
+                   handleFilterUpdate({ 
+                     countries: newCountry ? [newCountry] : [],
+                     languages: [] 
+                   });
+                }}
+                isMulti={false}
+                showFlags={true}
+              />
+
+              <SearchableDropdown 
+                label="Language" 
+                placeholder={advanceFilters.countries.length > 0 ? "Related Languages" : "All Languages"}
+                options={filteredLanguages}
+                value={advanceFilters.languages}
+                onChange={(newLangs) => handleFilterUpdate({ languages: newLangs })}
+                icon={Globe}
+              />
+            </div>
+
+            <div>
+              <label className="text-[9px] font-black uppercase tracking-[0.2em] text-white/30 block mb-3">Minimum Votes</label>
+              <GlassDropdown 
+                value={advanceFilters.votesMin}
+                options={VOTES_OPTIONS}
+                onChange={(val) => handleFilterUpdate({ votesMin: parseInt(val) })}
+                dropUp={true}
+              />
             </div>
           </div>
         </div>
       </div>
 
       <div className="max-w-[1400px] mx-auto flex flex-col lg:flex-row gap-10">
-        {/* Sidebar Filters */}
-        <div className="lg:w-80 shrink-0">
+        <div className="hidden lg:block lg:w-80 shrink-0">
           <div className="sticky top-32 space-y-6">
             <div className="bg-black/40 border border-white/5 rounded-[2.5rem] p-8 backdrop-blur-3xl shadow-2xl">
               <div className="flex items-center justify-between mb-8">
-                <h3 className="text-xs font-black uppercase tracking-[0.3em] text-white italic flex items-center gap-3">
-                  <Sliders size={16} className="text-emerald-500" /> Advanced Filters
+                <h3 className="text-xs font-black uppercase tracking-[0.3em] text-white italic flex items-center gap-2.5">
+                  <SlidersHorizontal size={15} className="text-emerald-500" /> Advanced Filters
                 </h3>
                 <button onClick={resetFilters} className="text-white/20 hover:text-emerald-500 transition-colors">
                   <RotateCcw size={16} />
                 </button>
               </div>
 
-              {/* Title Type */}
               <div className="mb-8">
                 <label className="text-[9px] font-black uppercase tracking-[0.2em] text-white/30 block mb-4">Content Type</label>
                 <div className="grid grid-cols-2 gap-2">
@@ -262,7 +459,6 @@ const SearchPage = () => {
                 </div>
               </div>
 
-              {/* Adult Content */}
               <div className="mb-8">
                 <label className="text-[9px] font-black uppercase tracking-[0.2em] text-white/30 block mb-4 flex items-center gap-2">
                   <AlertTriangle size={12} className="text-amber-500" /> Content Rating
@@ -284,7 +480,6 @@ const SearchPage = () => {
                 </div>
               </div>
 
-              {/* Genres */}
               <div className="mb-8">
                 <label className="text-[9px] font-black uppercase tracking-[0.2em] text-white/30 block mb-4">Genres</label>
                 <div className="flex flex-wrap gap-2">
@@ -309,7 +504,6 @@ const SearchPage = () => {
                 </div>
               </div>
 
-              {/* Rating Range */}
               <div className="mb-8">
                 <div className="flex justify-between items-center mb-4">
                   <label className="text-[9px] font-black uppercase tracking-[0.2em] text-white/30">Aggregate Rating</label>
@@ -326,7 +520,6 @@ const SearchPage = () => {
                 />
               </div>
 
-              {/* Year Range */}
               <div className="mb-8">
                 <div className="flex justify-between items-center mb-4">
                   <label className="text-[9px] font-black uppercase tracking-[0.2em] text-white/30">Release Year</label>
@@ -348,7 +541,6 @@ const SearchPage = () => {
                 </div>
               </div>
 
-              {/* Runtime Range */}
               <div className="mb-8">
                 <div className="flex justify-between items-center mb-4">
                   <label className="text-[9px] font-black uppercase tracking-[0.2em] text-white/30">Runtime (Mins)</label>
@@ -365,61 +557,34 @@ const SearchPage = () => {
                 />
               </div>
 
-              {/* Languages */}
-              <div className="mb-8">
-                <label className="text-[9px] font-black uppercase tracking-[0.2em] text-white/30 block mb-4 flex items-center gap-2">
-                  <Globe size={12} className="text-blue-400" /> Languages
-                </label>
-                <div className="flex flex-wrap gap-2">
-                  {LANGUAGES.map(lang => (
-                    <button
-                      key={lang.code}
-                      onClick={() => {
-                        const newLangs = advanceFilters.languages.includes(lang.code)
-                          ? advanceFilters.languages.filter(l => l !== lang.code)
-                          : [...advanceFilters.languages, lang.code];
-                        handleFilterUpdate({ languages: newLangs });
-                      }}
-                      className={`px-3 py-1.5 rounded-lg border text-[8px] font-black uppercase tracking-[0.1em] transition-all ${
-                        advanceFilters.languages.includes(lang.code)
-                        ? 'bg-blue-500/20 border-blue-500/50 text-blue-400' 
-                        : 'bg-white/5 border-white/5 text-white/30 hover:border-white/10 hover:text-white'
-                      }`}
-                    >
-                      {lang.name}
-                    </button>
-                  ))}
-                </div>
+              <div className="flex flex-col gap-2">
+                <SearchableDropdown 
+                  label="Country" 
+                  placeholder="All Countries"
+                  options={COUNTRIES}
+                  value={advanceFilters.countries[0] || null}
+                  onChange={(newCountry) => {
+                    handleFilterUpdate({ 
+                      countries: newCountry ? [newCountry] : [],
+                      languages: [] 
+                    });
+                  }}
+                  isMulti={false}
+                  showFlags={true}
+                  dropUp={true}
+                />
+
+                <SearchableDropdown 
+                  label="Language" 
+                  placeholder={advanceFilters.countries.length > 0 ? "Related Languages" : "All Languages"}
+                  options={filteredLanguages}
+                  value={advanceFilters.languages}
+                  onChange={(newLangs) => handleFilterUpdate({ languages: newLangs })}
+                  icon={Globe}
+                  dropUp={true}
+                />
               </div>
 
-              {/* Countries */}
-              <div className="mb-8">
-                <label className="text-[9px] font-black uppercase tracking-[0.2em] text-white/30 block mb-4 flex items-center gap-2">
-                  <Globe size={12} className="text-emerald-500" /> Countries
-                </label>
-                <div className="flex flex-wrap gap-2">
-                  {COUNTRIES.map(country => (
-                    <button
-                      key={country.code}
-                      onClick={() => {
-                        const newCountries = advanceFilters.countries.includes(country.code)
-                          ? advanceFilters.countries.filter(c => c !== country.code)
-                          : [...advanceFilters.countries, country.code];
-                        handleFilterUpdate({ countries: newCountries });
-                      }}
-                      className={`px-3 py-1.5 rounded-lg border text-[8px] font-black uppercase tracking-[0.1em] transition-all ${
-                        advanceFilters.countries.includes(country.code)
-                        ? 'bg-emerald-500/20 border-emerald-500/50 text-emerald-400' 
-                        : 'bg-white/5 border-white/5 text-white/30 hover:border-white/10 hover:text-white'
-                      }`}
-                    >
-                      {country.code}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Votes Min */}
               <div className="mb-8">
                 <label className="text-[9px] font-black uppercase tracking-[0.2em] text-white/30 block mb-4">Minimum Votes</label>
                 <GlassDropdown 
@@ -429,18 +594,15 @@ const SearchPage = () => {
                   dropUp={true}
                 />
               </div>
-
-
             </div>
           </div>
         </div>
 
-        {/* Results Grid */}
         <div className="flex-grow">
           {isLoading ? (
             <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-6">
               {[...Array(8)].map((_, i) => (
-                <div key={i} className="aspect-[2/3] bg-white/[0.02] border border-white/5 rounded-3xl animate-pulse" />
+                <div key={i} className="aspect-[2/3] bg-white/[0.02] border border-white/5 rounded-xl animate-pulse" />
               ))}
             </div>
           ) : results.length > 0 ? (

@@ -57,7 +57,7 @@ const Navbar = () => {
     searchTimeoutRef.current = setTimeout(async () => {
       setIsSearching(true);
       try {
-        const response = await fetch("http://localhost:4000/graphql", {
+        const response = await fetch("/graphql", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -213,31 +213,51 @@ const Navbar = () => {
                     
                     {/* Auto-suggestions Dropdown */}
                     {showSuggestions && suggestions.length > 0 && (
-                      <div className="absolute top-[calc(100%+12px)] right-0 w-[280px] bg-black/80 backdrop-blur-3xl border border-white/10 rounded-2xl p-2 shadow-[0_30px_60px_rgba(0,0,0,0.8)] flex flex-col gap-1 overflow-hidden z-[200] animate-in fade-in slide-in-from-top-2 duration-300">
-                        {suggestions.map(s => (
-                          <button
-                            key={s.imdb_id}
-                            onClick={() => {
-                              setShowSuggestions(false);
-                              setSearchValue('');
-                              navigate(`/discover?q=${encodeURIComponent(s.title)}`);
-                            }}
-                            className="w-full flex items-center gap-3 p-2 rounded-xl hover:bg-white/5 transition-all text-left"
-                          >
-                            <div className="w-10 h-14 bg-white/5 rounded-lg overflow-hidden shrink-0">
-                              {s.poster && <img src={s.poster} alt={s.title} className="w-full h-full object-cover" />}
-                            </div>
-                            <div className="flex flex-col">
-                              <span className="text-[11px] font-black uppercase tracking-[0.05em] text-white line-clamp-1">{s.title}</span>
-                              <div className="flex items-center gap-2 mt-1">
-                                {s.certificate && s.certificate !== 'UNKNOWN' && (
-                                  <span className="text-[8px] font-black uppercase text-emerald-500 bg-emerald-500/10 px-1.5 py-0.5 rounded">{s.certificate}</span>
-                                )}
-                                {s.year && <span className="text-[9px] font-black text-white/30">{s.year}</span>}
+                      <div className="absolute top-[calc(100%+12px)] right-0 w-[300px] bg-black/80 backdrop-blur-3xl border border-white/10 rounded-2xl p-2 shadow-[0_30px_60px_rgba(0,0,0,0.8)] flex flex-col gap-1 overflow-hidden z-[200] animate-in fade-in slide-in-from-top-2 duration-300">
+                        {suggestions.map(s => {
+                          const isCompany = s.certificate === 'COMPANY' || s.titleType === 'company';
+                          const isPerson = s.certificate === 'PERSON' || s.titleType === 'person';
+                          return (
+                            <button
+                              key={s.imdb_id}
+                              onClick={() => {
+                                setShowSuggestions(false);
+                                setSearchValue('');
+                                navigate(`/discover?q=${encodeURIComponent(s.title)}`);
+                              }}
+                              className="w-full flex items-center gap-3 p-2 rounded-xl hover:bg-white/5 transition-all text-left group"
+                            >
+                              <div className={`w-10 h-14 rounded-lg overflow-hidden shrink-0 flex items-center justify-center ${
+                                isCompany ? 'bg-blue-500/10 border border-blue-500/20' :
+                                isPerson  ? 'bg-amber-500/10 border border-amber-500/20' :
+                                            'bg-white/5'
+                              }`}>
+                                {s.poster ? (
+                                  <img src={s.poster} alt={s.title} className="w-full h-full object-cover" />
+                                ) : isCompany ? (
+                                  <svg className="w-5 h-5 text-blue-400/60" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-2 10v-5a1 1 0 00-1-1h-2a1 1 0 00-1 1v5m4 0H9" /></svg>
+                                ) : isPerson ? (
+                                  <svg className="w-5 h-5 text-amber-400/60" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
+                                ) : null}
                               </div>
-                            </div>
-                          </button>
-                        ))}
+                              <div className="flex flex-col min-w-0">
+                                <span className="text-[11px] font-black uppercase tracking-[0.05em] text-white line-clamp-1 group-hover:text-emerald-400 transition-colors">{s.title}</span>
+                                <div className="flex items-center gap-2 mt-1">
+                                  {isCompany && (
+                                    <span className="text-[8px] font-black uppercase text-blue-400 bg-blue-500/10 px-1.5 py-0.5 rounded">Company</span>
+                                  )}
+                                  {isPerson && !isCompany && (
+                                    <span className="text-[8px] font-black uppercase text-amber-400 bg-amber-500/10 px-1.5 py-0.5 rounded">Person</span>
+                                  )}
+                                  {!isCompany && !isPerson && s.certificate && s.certificate !== 'UNKNOWN' && (
+                                    <span className="text-[8px] font-black uppercase text-emerald-500 bg-emerald-500/10 px-1.5 py-0.5 rounded">{s.certificate}</span>
+                                  )}
+                                  {s.year && <span className="text-[9px] font-black text-white/30">{s.year}</span>}
+                                </div>
+                              </div>
+                            </button>
+                          );
+                        })}
                       </div>
                     )}
                   </div>
@@ -292,35 +312,108 @@ const Navbar = () => {
               </div>
             </div>
           ) : (
-            <div className="w-full h-full flex items-center animate-in slide-in-from-right-10 duration-700 ease-out">
+            <div className="w-full h-full flex items-center animate-in slide-in-from-right-10 duration-700 ease-out relative" ref={searchWrapRef}>
               <button 
-                onClick={() => setIsSearchActive(false)}
+                onClick={() => { setIsSearchActive(false); setShowSuggestions(false); setSearchValue(""); }}
                 className="p-3 text-white/40 hover:text-white shrink-0 hover:bg-white/5 rounded-full transition-all active:scale-90"
               >
                 <ArrowLeft size={22} />
               </button>
-              <input 
-                ref={searchInputRef}
-                type="text" 
-                placeholder="Searching Nocturne..." 
-                className="bg-transparent border-none outline-none text-white text-base font-black px-4 w-full placeholder:text-white/10 placeholder:uppercase"
-                value={searchValue}
-                onChange={(e) => setSearchValue(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' && searchValue.trim()) {
-                    navigate(`/search?q=${encodeURIComponent(searchValue)}`);
-                    setSearchValue("");
-                    setIsSearchActive(false);
-                  }
-                }}
-                onBlur={() => { if(!searchValue) setIsSearchActive(false) }}
-              />
-              <button 
-                onClick={() => setIsSearchActive(false)}
-                className="p-3 text-white/20 hover:text-white shrink-0 active:scale-90"
-              >
-                <X size={20} />
-              </button>
+              <div className="relative flex-1">
+                <input 
+                  ref={searchInputRef}
+                  type="text" 
+                  placeholder="Search movies, series, people..." 
+                  className="bg-transparent border-none outline-none text-white text-base font-black px-2 w-full placeholder:text-white/10 placeholder:uppercase placeholder:text-[11px]"
+                  value={searchValue}
+                  onFocus={() => { if (suggestions.length > 0) setShowSuggestions(true); }}
+                  onChange={(e) => { setSearchValue(e.target.value); setShowSuggestions(true); }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && searchValue.trim()) {
+                      setShowSuggestions(false);
+                      navigate(`/discover?q=${encodeURIComponent(searchValue)}`);
+                      setSearchValue("");
+                      setIsSearchActive(false);
+                    }
+                  }}
+                />
+
+                {/* Mobile Suggestions Dropdown */}
+                {showSuggestions && suggestions.length > 0 && (
+                  <div className="absolute top-[calc(100%+20px)] bg-black/90 backdrop-blur-3xl border border-white/10 rounded-2xl p-2 shadow-[0_30px_60px_rgba(0,0,0,0.9)] flex flex-col gap-1 overflow-hidden z-[200] animate-in fade-in slide-in-from-top-2 duration-300"
+                    style={{ width: 'calc(100vw - 80px)', left: '-40px' }}
+                  >
+                    {isSearching && (
+                      <div className="flex items-center gap-2 px-4 py-2">
+                        <div className="w-3 h-3 border-2 border-white/20 border-t-emerald-500 rounded-full animate-spin" />
+                        <span className="text-[9px] font-black uppercase tracking-widest text-white/20">Searching...</span>
+                      </div>
+                    )}
+                    {suggestions.map(s => {
+                      const isCompany = s.certificate === 'COMPANY' || s.titleType === 'company';
+                      const isPerson = s.certificate === 'PERSON' || s.titleType === 'person';
+                      return (
+                        <button
+                          key={s.imdb_id}
+                          onMouseDown={(e) => e.preventDefault()}
+                          onClick={() => {
+                            setShowSuggestions(false);
+                            setSearchValue('');
+                            setIsSearchActive(false);
+                            navigate(`/discover?q=${encodeURIComponent(s.title)}`);
+                          }}
+                          className="w-full flex items-center gap-3 p-2 rounded-xl hover:bg-white/5 active:bg-white/10 transition-all text-left group"
+                        >
+                          <div className={`w-10 h-14 rounded-lg overflow-hidden shrink-0 flex items-center justify-center ${
+                            isCompany ? 'bg-blue-500/10 border border-blue-500/20' :
+                            isPerson  ? 'bg-amber-500/10 border border-amber-500/20' :
+                                        'bg-white/5'
+                          }`}>
+                            {s.poster ? (
+                              <img src={s.poster} alt={s.title} className="w-full h-full object-cover" />
+                            ) : isCompany ? (
+                              <svg className="w-5 h-5 text-blue-400/60" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-2 10v-5a1 1 0 00-1-1h-2a1 1 0 00-1 1v5m4 0H9" /></svg>
+                            ) : isPerson ? (
+                              <svg className="w-5 h-5 text-amber-400/60" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
+                            ) : null}
+                          </div>
+                          <div className="flex flex-col min-w-0">
+                            <span className="text-[11px] font-black uppercase tracking-[0.05em] text-white line-clamp-1 group-hover:text-emerald-400 transition-colors">{s.title}</span>
+                            <div className="flex items-center gap-2 mt-1">
+                              {isCompany && (
+                                <span className="text-[8px] font-black uppercase text-blue-400 bg-blue-500/10 px-1.5 py-0.5 rounded">Company</span>
+                              )}
+                              {isPerson && !isCompany && (
+                                <span className="text-[8px] font-black uppercase text-amber-400 bg-amber-500/10 px-1.5 py-0.5 rounded">Person</span>
+                              )}
+                              {!isCompany && !isPerson && s.certificate && s.certificate !== 'UNKNOWN' && (
+                                <span className="text-[8px] font-black uppercase text-emerald-500 bg-emerald-500/10 px-1.5 py-0.5 rounded">{s.certificate}</span>
+                              )}
+                              {s.year && <span className="text-[9px] font-black text-white/30">{s.year}</span>}
+                            </div>
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+
+              {searchValue ? (
+                <button 
+                  onClick={() => { setSearchValue(""); setSuggestions([]); setShowSuggestions(false); }}
+                  className="p-3 text-white/20 hover:text-white shrink-0 active:scale-90 transition-all"
+                >
+                  <X size={20} />
+                </button>
+              ) : (
+                <button 
+                  onClick={() => setIsSearchActive(false)}
+                  className="p-3 text-white/20 hover:text-white shrink-0 active:scale-90 transition-all"
+                >
+                  <X size={20} />
+                </button>
+              )}
             </div>
           )}
         </nav>

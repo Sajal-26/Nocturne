@@ -8,4 +8,12 @@ export default defineConfig({
     react(),
     tailwindcss(),
   ],
+  server: {
+    proxy: {
+      '/graphql': {
+        target: 'http://localhost:4000',
+        changeOrigin: true,
+      }
+    }
+  }
 })

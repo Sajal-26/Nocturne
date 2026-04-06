@@ -36,6 +36,47 @@ const searchCompanies = async (query) => {
     }
 };
 
+const enrichWithTMDb = async (imdbId) => {
+    if (!imdbId) return {};
+    try {
+        const findUrl = `https://api.themoviedb.org/3/find/${imdbId}?external_source=imdb_id`;
+        const findRes = await originalFetch(findUrl, {
+            headers: { 'Authorization': `Bearer ${TMDB_BEARER_TOKEN}`, 'accept': 'application/json' }
+        });
+        if (!findRes.ok) return {};
+        const findData = await findRes.json();
+
+        const movieResult = findData.movie_results?.[0];
+        const tvResult = findData.tv_results?.[0];
+        const tmdbEntry = movieResult || tvResult;
+        if (!tmdbEntry) return {};
+
+        const mediaType = movieResult ? 'movie' : 'tv';
+        const tmdbId = tmdbEntry.id;
+
+        const imagesUrl = `https://api.themoviedb.org/3/${mediaType}/${tmdbId}/images?include_image_language=en,null`;
+        const imagesRes = await originalFetch(imagesUrl, {
+            headers: { 'Authorization': `Bearer ${TMDB_BEARER_TOKEN}`, 'accept': 'application/json' }
+        });
+        if (!imagesRes.ok) return {};
+        const images = await imagesRes.json();
+
+        const backdropPath = images.backdrops?.[0]?.file_path;
+        const backdrop = backdropPath
+            ? `https://image.tmdb.org/t/p/w1280${backdropPath}`
+            : null;
+
+        const logoEntry = (images.logos || []).find(l => l.iso_639_1 === 'en') || images.logos?.[0];
+        const logo = logoEntry?.file_path
+            ? `https://image.tmdb.org/t/p/w500${logoEntry.file_path}`
+            : null;
+
+        return { backdrop, logo };
+    } catch (e) {
+        return {};
+    }
+};
+
 const calculateSimilarity = (s1, s2) => {
     s1 = (s1 || "").toLowerCase().trim();
     s2 = (s2 || "").toLowerCase().trim();
@@ -80,40 +121,42 @@ const HEADERS = {
 
 const originalFetch = globalThis.fetch;
 const GLOBAL_CACHE = new Map();
-const CACHE_TTL = 3600 * 1000; // 1 Hour
+const CACHE_TTL = 6 * 3600 * 1000;
 
-// Proxy rotation strategy for IMDb endpoints
-// Try direct first, then rotate through public CORS proxies
 const PROXY_GENERATORS = [
-    (url) => url,                                                                  // 1. Direct
-    (url) => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`,  // 2. CodeTabs
-    (url) => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,       // 3. AllOrigins
-    (url) => `https://corsproxy.io/?${encodeURIComponent(url)}`,                    // 4. CorsProxy.io
+    (url) => url,
+    (url) => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`,
+    (url) => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
+    (url) => `https://corsproxy.io/?${encodeURIComponent(url)}`,
 ];
+
+let lastWorkingProxyIndex = 0;
 
 const fetchWithProxy = async (url, options = {}) => {
     let lastError;
-    for (let i = 0; i < PROXY_GENERATORS.length; i++) {
+    const order = [
+        lastWorkingProxyIndex,
+        ...Array.from({ length: PROXY_GENERATORS.length }, (_, i) => i).filter(i => i !== lastWorkingProxyIndex)
+    ];
+
+    for (const i of order) {
         const isDirect = i === 0;
         const proxyUrl = PROXY_GENERATORS[i](url);
-        const timeout = isDirect ? 5000 : 10000;
+        const timeout = isDirect ? 4000 : 8000;
         const controller = new AbortController();
         const timer = setTimeout(() => controller.abort(), timeout);
         try {
             const res = await originalFetch(proxyUrl, { ...options, signal: controller.signal });
             clearTimeout(timer);
             if (res.ok) {
-                if (!isDirect) console.log(`[PROXY] Succeeded via proxy #${i}: ${PROXY_GENERATORS[i].toString().slice(11, 50)}...`);
+                if (i !== lastWorkingProxyIndex) {
+                    lastWorkingProxyIndex = i;
+                }
                 return res;
             }
-            // Stop immediately on logical errors (auth / not found)
-            if (res.status === 401 || res.status === 403 || res.status === 404) {
-                return res;
-            }
-            console.warn(`[PROXY] Attempt ${i + 1} failed with status ${res.status}. Trying next...`);
+            if (res.status === 401 || res.status === 403 || res.status === 404) return res;
         } catch (err) {
             clearTimeout(timer);
-            console.warn(`[PROXY] Attempt ${i + 1} error: ${err.message}. Trying next...`);
             lastError = err;
         }
     }
@@ -126,11 +169,9 @@ const fetch = async (url, options) => {
     
     const hit = GLOBAL_CACHE.get(cacheKey);
     if (hit && hit.expiry > Date.now()) {
-        console.log("[CACHE HIT] Fast returning from local node RAM.");
         return { ok: true, status: 200, json: async () => hit.data };
     }
     
-    // Use proxy rotation for IMDb; direct fetch for everything else (TMDb etc.)
     const isImdb = url.includes('imdb.com') || url.includes('sg.media-imdb') || url.includes('graphql.imdb');
     const response = isImdb ? await fetchWithProxy(url, options) : await originalFetch(url, options);
     
@@ -139,14 +180,13 @@ const fetch = async (url, options) => {
         const data = await responseClone.json();
         if (data && !data.errors) {
             GLOBAL_CACHE.set(cacheKey, { data, expiry: Date.now() + CACHE_TTL });
-            console.log("[CACHE MISS] Network fetched & cached correctly.");
         }
     }
     return response;
 };
 
 const normalizeCertificate = (cert) => {
-    if (!cert) return "NR";
+    if (!cert || cert === 'Not Rated' || cert === 'Unrated' || cert === 'NOT RATED') return "NR";
     const mapping = {
         'Approved': 'U',
         'Passed': 'U',
@@ -157,7 +197,9 @@ const normalizeCertificate = (cert) => {
         'TV-14': 'UA',
         'PG-13': 'UA',
         'NC-17': 'A',
-        'X': 'A'
+        'X': 'A',
+        'Adult': 'A',
+        'Restricted': 'A'
     };
     return mapping[cert] || cert;
 };
@@ -234,7 +276,7 @@ export const getBackdropsBatch = async (ids) => {
     return richBackdrops.filter(Boolean);
 };
 
-export const getTrendingMovies = async () => {
+export const getTrendingMovies = async (enrich = false) => {
     const query = `
     query {
       chartTitles(first: 100, chart: { chartType: MOST_POPULAR_MOVIES }) {
@@ -249,6 +291,8 @@ export const getTrendingMovies = async () => {
             certificate { rating }
             titleType { text id }
             genres { genres { text } }
+            countriesOfOrigin { countries { id text } }
+            spokenLanguages { spokenLanguages { id text } }
             plot { plotText { plainText } }
           }
         }
@@ -280,20 +324,23 @@ export const getTrendingMovies = async () => {
                 certificate: normalizeCertificate(node.certificate?.rating),
                 poster: node.primaryImage?.url || null,
                 backdrop: null,
+                logo: null,
                 duration: formatDuration(node.runtime?.seconds),
-                titleType: node.titleType?.id || 'movie',
+                titleType: node.id.startsWith('nm') ? 'person' : (node.id.startsWith('co') ? 'company' : (node.titleType?.id || 'movie')),
                 genres: node.genres?.genres?.map(g => g.text) || [],
+                countries: node.countriesOfOrigin?.countries?.map(c => c.id) || [],
+                languages: node.spokenLanguages?.spokenLanguages?.map(l => l.id) || [],
                 description: node.plot?.plotText?.plainText || "Synchronizing Neural Feed..."
             };
         });
 
-        const topIds = movies.slice(0, 3).map(m => m.imdb_id);
-        const backdrops = await getBackdropsBatch(topIds);
-        
-        return movies.map(movie => {
-            const enriched = backdrops.find(b => b.imdb_id === movie.imdb_id);
-            return enriched ? { ...movie, backdrop: enriched.backdrop } : movie;
-        });
+        if (!enrich) return movies;
+
+        const heroMovies = movies.slice(0, 8);
+        const enrichments = await Promise.all(heroMovies.map(m => enrichWithTMDb(m.imdb_id)));
+        return movies.map((movie, idx) =>
+            idx < 8 ? { ...movie, ...enrichments[idx] } : movie
+        );
 
     } catch (err) {
         return [];
@@ -345,7 +392,7 @@ export const getTitlesBatch = async (ids) => {
             poster: node.primaryImage?.url || null,
             duration: formatDuration(node.runtime?.seconds),
             runtime_minutes: node.runtime?.seconds ? Math.floor(node.runtime.seconds / 60) : null,
-            titleType: node.titleType?.id || 'movie',
+            titleType: node.id.startsWith('nm') ? 'person' : (node.id.startsWith('co') ? 'company' : (node.titleType?.id || 'movie')),
             genres: node.genres?.genres?.map(g => g.text) || [],
             countries: node.countriesOfOrigin?.countries?.map(c => c.id) || [],
             languages: node.spokenLanguages?.spokenLanguages?.map(l => l.id) || [],
@@ -354,7 +401,7 @@ export const getTitlesBatch = async (ids) => {
     } catch (err) { return []; }
 };
 
-export const getTrendingTVShows = async () => {
+export const getTrendingTVShows = async (enrich = false) => {
     const query = `
     query {
       chartTitles(first: 100, chart: { chartType: MOST_POPULAR_TV_SHOWS }) {
@@ -369,6 +416,8 @@ export const getTrendingTVShows = async () => {
             runtime { seconds }
             primaryImage { url }
             genres { genres { text } }
+            countriesOfOrigin { countries { id text } }
+            spokenLanguages { spokenLanguages { id text } }
             plot { plotText { plainText } }
           }
         }
@@ -400,20 +449,23 @@ export const getTrendingTVShows = async () => {
                 certificate: normalizeCertificate(node.certificate?.rating),
                 poster: node.primaryImage?.url || null,
                 backdrop: null,
+                logo: null,
                 duration: formatDuration(node.runtime?.seconds) || node.titleType?.text || "TV Series",
-                titleType: node.titleType?.id || 'tvSeries',
+                titleType: node.id.startsWith('nm') ? 'person' : (node.id.startsWith('co') ? 'company' : (node.titleType?.id || 'tvSeries')),
                 genres: node.genres?.genres?.map(g => g.text) || [],
+                countries: node.countriesOfOrigin?.countries?.map(c => c.id) || [],
+                languages: node.spokenLanguages?.spokenLanguages?.map(l => l.id) || [],
                 description: node.plot?.plotText?.plainText || "Synchronizing Neural Feed..."
             };
         });
 
-        const topIds = tvShows.slice(0, 3).map(m => m.imdb_id);
-        const backdrops = await getBackdropsBatch(topIds);
-        
-        return tvShows.map(tv => {
-            const enriched = backdrops.find(b => b.imdb_id === tv.imdb_id);
-            return enriched ? { ...tv, backdrop: enriched.backdrop } : tv;
-        });
+        if (!enrich) return tvShows;
+
+        const heroShows = tvShows.slice(0, 8);
+        const enrichments = await Promise.all(heroShows.map(s => enrichWithTMDb(s.imdb_id)));
+        return tvShows.map((tv, idx) =>
+            idx < 8 ? { ...tv, ...enrichments[idx] } : tv
+        );
 
     } catch (err) {
         return [];
@@ -723,38 +775,68 @@ export const getTopRatedByCountry = async (countryCode = "IN") => {
 export const searchMovies = async (query) => {
     if (!query) return [];
     const firstChar = query.charAt(0).toLowerCase();
-    const url = `https://v3.sg.media-imdb.com/suggestion/${firstChar}/${encodeURIComponent(query)}.json`;
+    const imdbUrl = `https://v3.sg.media-imdb.com/suggestion/${firstChar}/${encodeURIComponent(query)}.json`;
 
-    try {
-        const response = await fetch(url);
-        if (!response.ok) throw new Error(`Status: ${response.status}`);
-        const json = await response.json();
-        const results = json.d || [];
+    const [imdbRes, tmdbCompanies] = await Promise.allSettled([
+        fetch(imdbUrl).then(r => r.ok ? r.json() : { d: [] }).catch(() => ({ d: [] })),
+        searchCompanies(query)
+    ]);
 
-        return results.map((item, index) => {
-            const isPerson = item.id.startsWith('nm');
-            const isCompany = item.id.startsWith('co');
-            return {
-                rank: index + 1,
-                imdb_id: item.id,
-                title: item.l,
-                year: item.y || null,
-                rating: null,
-                rating_count: 0,
-                rating_count_formatted: isCompany ? "ENTITY" : "0",
-                certificate: isPerson ? "PERSON" : (isCompany ? "COMPANY" : (item.q || "UNKNOWN").toUpperCase()),
-                poster: item.i?.imageUrl || null,
-                duration: item.s || "N/A"
-            };
-        });
-    } catch (err) {
-        return [];
-    }
+    const imdbResults = (imdbRes.status === 'fulfilled' ? imdbRes.value?.d : null) || [];
+    const companyResults = (tmdbCompanies.status === 'fulfilled' ? tmdbCompanies.value : null) || [];
+
+    const IMDB_TYPE_LABELS = {
+        'feature': 'MOVIE',
+        'tv series': 'TV SERIES',
+        'tv mini-series': 'MINI SERIES',
+        'tv movie': 'TV MOVIE',
+        'tv special': 'TV SPECIAL',
+        'tv short': 'SHORT',
+        'short': 'SHORT',
+        'video': 'VIDEO',
+        'video game': 'GAME',
+        'podcast series': 'PODCAST',
+        'music video': 'MUSIC VIDEO',
+    };
+
+    const imdbMapped = imdbResults.map((item, index) => {
+        const isPerson = item.id.startsWith('nm');
+        const isCompany = item.id.startsWith('co');
+        const rawType = (item.q || '').toLowerCase();
+        const friendlyLabel = IMDB_TYPE_LABELS[rawType] || (item.q || 'UNKNOWN').toUpperCase();
+        return {
+            rank: index + 1,
+            imdb_id: item.id,
+            title: item.l,
+            year: item.y || null,
+            rating: null,
+            rating_count: 0,
+            rating_count_formatted: isCompany ? "ENTITY" : "0",
+            certificate: isPerson ? "PERSON" : (isCompany ? "COMPANY" : friendlyLabel),
+            poster: item.i?.imageUrl || null,
+            duration: item.s || "N/A",
+            titleType: isPerson ? 'person' : (isCompany ? 'company' : 'movie')
+        };
+    });
+
+    const seen = new Set(imdbMapped.map(i => i.imdb_id));
+    const mergedCompanies = companyResults.filter(c => !seen.has(c.imdb_id));
+
+    const all = [...imdbMapped, ...mergedCompanies].map(item => ({
+        ...item,
+        _score: calculateSimilarity(query, item.title || '')
+    }));
+
+    all.sort((a, b) => b._score - a._score);
+
+    return all.slice(0, 8).map((item, idx) => {
+        const { _score, ...rest } = item;
+        return { ...rest, rank: idx + 1 };
+    });
 };
 
 export const getAdvancedSearch = async (filters) => {
     if (filters.query) {
-        console.log(`[Search] Query: "${filters.query}"`);
         let items = await searchMovies(filters.query);
         
         const validItems = items.filter(i => {
@@ -766,7 +848,6 @@ export const getAdvancedSearch = async (filters) => {
         const personItems = validItems.filter(i => i.imdb_id.startsWith('nm')).slice(0, 5);
         const companyItems = validItems.filter(i => i.imdb_id.startsWith('co')).slice(0, 3);
         
-        // Fetch companies live from TMDb API
         const tmdbCompanies = await searchCompanies(filters.query);
         const hybridCompanyItems = [...tmdbCompanies, ...companyItems]
             .filter((v, i, a) => a.findIndex(t => t.imdb_id === v.imdb_id) === i)
@@ -786,7 +867,6 @@ export const getAdvancedSearch = async (filters) => {
             description: c.description || 'Production Company'
         }));
         
-        // Unified ranking: score every result against the query and sort best-match first
         const allResults = [...peopleList, ...companyList, ...enriched].map(item => ({
             ...item,
             _matchScore: calculateSimilarity(filters.query, item.title || '')
@@ -794,13 +874,10 @@ export const getAdvancedSearch = async (filters) => {
 
         allResults.sort((a, b) => b._matchScore - a._matchScore);
 
-        // Re-assign sequential ranks after sorting
         const ranked = allResults.map((item, idx) => {
             const { _matchScore, ...rest } = item;
             return { ...rest, rank: idx + 1 };
         });
-
-        console.log(`[Search] Returning ${ranked.length} items ranked by match score.`);
         
         return ranked;
     }
@@ -851,13 +928,11 @@ export const getAdvancedSearch = async (filters) => {
         };
     }
 
-    if (filters.titleType) {
+    if (filters.titleType && filters.titleType !== 'ALL') {
         variables.titleTypeConstraint = { anyTitleTypeIds: [filters.titleType] };
     }
 
-    if (filters.adult === 'INCLUDE') {
-        variables.adultSearchConstraint = { isAdult: "INCLUDE" };
-    } else if (filters.adult === 'ONLY') {
+    if (filters.adult === 'ONLY') {
         variables.adultSearchConstraint = { isAdult: "ONLY" };
     }
 

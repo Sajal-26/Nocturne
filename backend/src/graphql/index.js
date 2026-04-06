@@ -24,6 +24,7 @@ export const typeDefs = `#graphql
     isAdult: Boolean
     poster: String
     backdrop: String
+    logo: String
     duration: String
     runtime_minutes: Int
     titleType: String
@@ -58,8 +59,8 @@ export const typeDefs = `#graphql
   }
 
   type Query {
-    trendingMovies: [Movie]
-    trendingTVShows: [Movie]
+    trendingMovies(enrich: Boolean): [Movie]
+    trendingTVShows(enrich: Boolean): [Movie]
     topRatedMovies: [Movie]
     topRatedTVShows: [Movie]
     topEnglishMovies: [Movie]
@@ -75,11 +76,11 @@ export const typeDefs = `#graphql
 export const resolvers = {
   Query: {
     hello: () => "Welcome to Nocturne GraphQL API",
-    trendingMovies: async () => {
-      return await getTrendingMovies();
+    trendingMovies: async (_, { enrich }) => {
+      return await getTrendingMovies(enrich);
     },
-    trendingTVShows: async () => {
-      return await getTrendingTVShows();
+    trendingTVShows: async (_, { enrich }) => {
+      return await getTrendingTVShows(enrich);
     },
     topRatedMovies: async () => {
       return await getTopRatedMovies();

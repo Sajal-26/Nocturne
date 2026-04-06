@@ -1,6 +1,8 @@
 import { create } from 'zustand';
 
-const GRAPHQL_URL = "http://localhost:4000/graphql";
+const GRAPHQL_URL = "/graphql";
+
+let advanceFilterTimeout = null;
 
 export const useMovieStore = create((set, get) => ({
     trending: [],
@@ -49,6 +51,7 @@ export const useMovieStore = create((set, get) => ({
         set((state) => ({ 
             advanceFilters: { ...state.advanceFilters, ...updates }
         }));
+        
         get().applyLocalFilters();
     },
 
@@ -63,7 +66,6 @@ export const useMovieStore = create((set, get) => ({
     applyLocalFilters: () => {
         const { unfilteredResults, advanceFilters } = get();
         let filtered = unfilteredResults.filter(item => {
-            // Note: Since duration is returned as '2h 56m', we need to parse it for runtime_minutes
             let runtime_minutes = null;
             if (item.duration && item.duration !== 'N/A') {
                 const matchH = item.duration.match(/(\d+)h/);
@@ -71,7 +73,6 @@ export const useMovieStore = create((set, get) => ({
                 runtime_minutes = (parseInt(matchH?.[1] || 0) * 60) + parseInt(matchM?.[1] || 0);
             }
 
-            // Rating Filter
             if (advanceFilters.ratingMin > 0) {
                 if (item.rating === null || item.rating < advanceFilters.ratingMin) return false;
             }
@@ -79,7 +80,6 @@ export const useMovieStore = create((set, get) => ({
                 if (item.rating !== null && item.rating > advanceFilters.ratingMax) return false;
             }
 
-            // Temporal Filter (Year)
             if (advanceFilters.yearStart > 1900) {
                 if (item.year === null || parseInt(item.year) < advanceFilters.yearStart) return false;
             }
@@ -87,7 +87,6 @@ export const useMovieStore = create((set, get) => ({
                 if (item.year !== null && parseInt(item.year) > advanceFilters.yearEnd) return false;
             }
             
-            // Runtime Filter
             if (advanceFilters.runtimeMin > 0) {
                 if (runtime_minutes === null || runtime_minutes < advanceFilters.runtimeMin) return false;
             }
@@ -95,36 +94,31 @@ export const useMovieStore = create((set, get) => ({
                 if (runtime_minutes !== null && runtime_minutes > advanceFilters.runtimeMax) return false;
             }
 
-            // Priority Sort
-            // (Sort evaluates after filtering completes below)
-
-            // Genre Nodes
             if (advanceFilters.genres?.length) {
                 if (!item.genres || !advanceFilters.genres.every(g => item.genres.includes(g))) return false;
             }
 
-            // Origin Nodes (Countries)
             if (advanceFilters.countries?.length) {
-                if (!item.countries || !advanceFilters.countries.some(c => item.countries.includes(c))) return false;
+                if (item.countries && item.countries.length > 0) {
+                    if (!advanceFilters.countries.some(c => item.countries.includes(c))) return false;
+                }
             }
 
-            // Language Grid
             if (advanceFilters.languages?.length) {
-                if (!item.languages || !advanceFilters.languages.some(l => item.languages.includes(l))) return false;
+                if (item.languages && item.languages.length > 0) {
+                    if (!advanceFilters.languages.some(l => item.languages.includes(l))) return false;
+                }
             }
 
-            // Min Vote Pulse
             if (advanceFilters.votesMin > 0) {
                 if (item.rating_count < advanceFilters.votesMin) return false;
             }
 
-            // Content Type
             if (advanceFilters.titleType !== 'ALL') {
                 const isMovieMatch = advanceFilters.titleType === 'movie' && item.titleType === 'tvMovie';
                 if (!isMovieMatch && advanceFilters.titleType !== item.titleType) return false;
             }
 
-            // Maturity Protocol
             const isAdult = ['A', 'Adult', 'NC-17', 'X'].includes(item.certificate);
             if (advanceFilters.adult === 'ONLY' && !isAdult) return false;
             if (advanceFilters.adult === 'EXCLUDE' && isAdult) return false;
@@ -132,15 +126,13 @@ export const useMovieStore = create((set, get) => ({
             return true;
         });
 
-        // Apply Sorting based on Priority Sort logic
         if (advanceFilters.sortBy) {
             filtered.sort((a, b) => {
                 if (advanceFilters.sortBy === 'ALPHABETICAL') return (a.title || "").localeCompare(b.title || "");
                 if (advanceFilters.sortBy === 'USER_RATING') return (b.rating || 0) - (a.rating || 0);
                 if (advanceFilters.sortBy === 'NUM_VOTES') return (b.rating_count || 0) - (a.rating_count || 0);
-                if (advanceFilters.sortBy === 'BOX_OFFICE_GROSS') return (b.rank || 0) - (a.rank || 0); // Placeholder
+                if (advanceFilters.sortBy === 'BOX_OFFICE_GROSS') return (b.rank || 0) - (a.rank || 0);
                 if (advanceFilters.sortBy === 'RELEASE_DATE') return (b.year || 0) - (a.year || 0);
-                // Default POPULARITY
                 return (a.rank || 0) - (b.rank || 0);
             });
         }
@@ -160,7 +152,6 @@ export const useMovieStore = create((set, get) => ({
     fetchTrending: async () => {
         const { contentType, selectedCountry, searchQuery, advanceFilters, personFilters, isLoading } = get();
         
-        // Prevent overlapping fetches for the same category
         set({ isLoading: true, error: null });
         const start = Date.now();
 
@@ -258,7 +249,6 @@ export const useMovieStore = create((set, get) => ({
                 let i = 0; let j = 0;
                 while (i < moves.length || j < shows.length) {
                     if (i < moves.length && j < shows.length) {
-                        // Dynamically scale probabilities if lists heavily unbalance (optional/stochastic)
                         if (Math.random() > 0.6) {
                             fetchedData.push(shows[j++]);
                         } else {
@@ -283,7 +273,6 @@ export const useMovieStore = create((set, get) => ({
 
         } catch (error) {
             set({ error: error.message, isLoading: false });
-            console.error("Movie Store Error:", error.message);
         }
     }
 }));
