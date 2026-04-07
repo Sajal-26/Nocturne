@@ -5,7 +5,7 @@ import { Link } from 'react-router-dom';
 const Construction = ({ title }) => {
   return (
     <div className="min-h-screen bg-black flex items-center justify-center px-6 pb-20 pt-32 md:pt-40 overflow-hidden relative">
-      {/* Background Atmosphere */}
+      {}
       <div className="absolute top-1/4 left-1/4 w-[500px] h-[500px] bg-emerald-500/10 rounded-full blur-[150px] animate-pulse" />
       <div className="absolute bottom-1/4 right-1/4 w-[400px] h-[400px] bg-cyan-500/5 rounded-full blur-[150px] animate-pulse delay-700" />
       

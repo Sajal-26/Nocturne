@@ -6,13 +6,13 @@ export const Footer = () => {
 
   return (
     <footer className="w-full pt-20 pb-10 px-6 relative overflow-hidden">
-      {/* Decorative background glow for footer */}
+      {}
       <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-[60%] h-32 bg-emerald-500/5 blur-[100px] rounded-full pointer-events-none"></div>
       
       <div className="max-w-7xl mx-auto">
         <div className="glass border-white/5 rounded-[2.5rem] p-10 md:p-16 relative z-10">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-12 mb-16">
-            {/* Brand Column */}
+            {}
             <div className="md:col-span-1">
               <Link to="/" className="flex items-center gap-3 group mb-6">
                 <div className="w-8 h-8 bg-emerald-500 rounded-xl flex items-center justify-center rotate-3 group-hover:rotate-12 transition-all duration-500 shadow-[0_0_15px_rgba(16,185,129,0.5)]">
@@ -27,7 +27,7 @@ export const Footer = () => {
               </p>
             </div>
 
-            {/* Ecosystem Column */}
+            {}
             <div>
               <h4 className="text-white font-black text-[10px] uppercase tracking-[0.3em] mb-6 border-b border-white/5 pb-2">Ecosystem</h4>
               <ul className="space-y-4">
@@ -50,7 +50,7 @@ export const Footer = () => {
               </ul>
             </div>
 
-            {/* Protocol Column */}
+            {}
             <div>
               <h4 className="text-white font-black text-[10px] uppercase tracking-[0.3em] mb-6 border-b border-white/5 pb-2">Protocol</h4>
               <ul className="space-y-4">
@@ -71,7 +71,7 @@ export const Footer = () => {
               </ul>
             </div>
 
-            {/* Connect Column */}
+            {}
             <div className="md:col-span-1">
               <h4 className="text-white font-black text-[10px] uppercase tracking-[0.3em] mb-6 border-b border-white/5 pb-2">Connect</h4>
               <div className="flex gap-4 mb-8">
@@ -104,7 +104,7 @@ export const Footer = () => {
             </div>
           </div>
 
-          {/* Bottom Bar */}
+          {}
           <div className="pt-10 border-t border-white/5 flex flex-col md:flex-row justify-between items-center gap-6">
             <div className="flex items-center gap-2 overflow-hidden px-4 py-1.5 bg-black/40 rounded-full border border-white/5">
               <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></div>

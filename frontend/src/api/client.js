@@ -9,7 +9,7 @@ const client = axios.create({
   },
 });
 
-// Request interceptor for Supabase Auth Header support (Mobile/Web Sync)
+
 client.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('supabase-auth-token');

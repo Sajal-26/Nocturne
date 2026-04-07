@@ -101,14 +101,14 @@ const Hero = () => {
               visibility: Math.abs(index - currentIndex) <= 1 ? 'visible' : 'hidden'
             }}
           >
-            {/* Mobile: portrait poster */}
+            {}
             <img 
               src={item.poster}
               alt=""
               className={`md:hidden w-full h-full object-cover transition-transform duration-[24s] ease-out ${isActive ? 'scale-110' : 'scale-100'}`}
               style={{ objectPosition: '50% 20%' }}
             />
-            {/* Desktop: wide backdrop */}
+            {}
             <img 
               src={item.backdrop || item.poster}
               alt=""

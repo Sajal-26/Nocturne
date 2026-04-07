@@ -130,7 +130,7 @@ const Navbar = () => {
         }`}>
           {!isSearchActive ? (
             <div className="w-full h-full flex items-center justify-between">
-              {/* LEFT: LOGO SECTOR */}
+              {}
               <div className="flex-1 flex items-center justify-start min-w-[150px]">
                 <Link to="/" className="flex items-center gap-2 group transition-transform active:scale-95">
                   <div className="w-8 h-8 md:w-10 md:h-10 bg-emerald-500 rounded-xl flex items-center justify-center shadow-[0_0_30px_rgba(16,185,129,0.4)] transition-all duration-700 group-hover:scale-110 group-hover:rotate-[360deg]">
@@ -140,7 +140,7 @@ const Navbar = () => {
                 </Link>
               </div>
 
-              {/* CENTER: CORE NAVIGATION SECTOR */}
+              {}
               <div className="hidden lg:flex items-center justify-center relative h-full">
                 <div className="flex items-center gap-1 relative h-full" ref={navContainerRef}>
                   {activeRect && (
@@ -164,7 +164,7 @@ const Navbar = () => {
                 </div>
               </div>
 
-              {/* RIGHT: PLATFORM + UTILITY SECTOR */}
+              {}
               <div className="flex-1 flex items-center justify-end gap-3 md:gap-4 ml-4">
                 <div className="hidden xl:flex items-center gap-1 border-r border-white/10 pr-4 mr-1">
                   {platformLinks.map((link) => (
@@ -211,7 +211,7 @@ const Navbar = () => {
                       />
                     </div>
                     
-                    {/* Auto-suggestions Dropdown */}
+                    {}
                     {showSuggestions && suggestions.length > 0 && (
                       <div className="absolute top-[calc(100%+12px)] right-0 w-[300px] bg-black/80 backdrop-blur-3xl border border-white/10 rounded-2xl p-2 shadow-[0_30px_60px_rgba(0,0,0,0.8)] flex flex-col gap-1 overflow-hidden z-[200] animate-in fade-in slide-in-from-top-2 duration-300">
                         {suggestions.map(s => {
@@ -338,7 +338,7 @@ const Navbar = () => {
                   }}
                 />
 
-                {/* Mobile Suggestions Dropdown */}
+                {}
                 {showSuggestions && suggestions.length > 0 && (
                   <div className="absolute top-[calc(100%+20px)] bg-black/90 backdrop-blur-3xl border border-white/10 rounded-2xl p-2 shadow-[0_30px_60px_rgba(0,0,0,0.9)] flex flex-col gap-1 overflow-hidden z-[200] animate-in fade-in slide-in-from-top-2 duration-300"
                     style={{ width: 'calc(100vw - 80px)', left: '-40px' }}

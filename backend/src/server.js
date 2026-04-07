@@ -9,6 +9,9 @@ import pkg from 'body-parser';
 const { json } = pkg;
 import { typeDefs, resolvers } from './graphql/index.js';
 import { getTrendingMovies, getTrendingTVShows } from './services/imdb.js';
+import { getNetflixTop10 } from './services/netflix.js';
+import { getHotstarPopular, getHotstarPopularShows } from './services/hotstar.js';
+import { getAllPlatformTop10 } from './services/justwatch.js';
 
 const warmCache = async () => {
     try {
@@ -51,13 +54,51 @@ async function startServer() {
 
     app.use('/graphql', expressMiddleware(server));
 
+    app.get('/api/netflix-top-10', async (req, res) => {
+        try {
+            const { type, date } = req.query;
+            const data = await getNetflixTop10(type || 'movie', date);
+            res.json(data);
+        } catch (e) {
+            res.status(500).json({ error: e.message });
+        }
+    });
+
+    app.get('/api/hotstar-popular', async (req, res) => {
+        try {
+            const data = await getHotstarPopular();
+            res.json(data);
+        } catch (e) {
+            res.status(500).json({ error: e.message });
+        }
+    });
+
+    app.get('/api/hotstar-popular-shows', async (req, res) => {
+        try {
+            const data = await getHotstarPopularShows();
+            res.json(data);
+        } catch (e) {
+            res.status(500).json({ error: e.message });
+        }
+    });
+
+    app.get('/api/platform-top-10', async (req, res) => {
+        try {
+            const { country, type } = req.query;
+            const data = await getAllPlatformTop10({ country: country || 'IN', type: type || 'MOVIE' });
+            res.json(data);
+        } catch (e) {
+            res.status(500).json({ error: e.message });
+        }
+    });
+
     app.get('/health', (req, res) => {
         res.json({ status: "online", service: "Nocturne Backend" });
     });
 
     const PORT = process.env.PORT || 4000;
     httpServer.listen(PORT, () => {
-        // Pre-warm cache in background — don't block server startup
+        console.log(`[SERVER] Nocturne Backend is operational on port ${PORT}`);
         warmCache();
     });
 }

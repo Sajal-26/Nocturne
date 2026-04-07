@@ -5,7 +5,7 @@ import { Link } from 'react-router-dom';
 const NotFound = () => {
   return (
     <div className="min-h-screen bg-black flex flex-col items-center justify-center p-6 overflow-hidden relative selection:bg-emerald-500 selection:text-black">
-      {/* Background Spectral Void */}
+      {}
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-emerald-500/5 rounded-full blur-[180px] animate-pulse" />
       <div className="absolute top-0 right-0 w-[400px] h-[400px] bg-cyan-500/5 rounded-full blur-[150px] animate-pulse" />
       

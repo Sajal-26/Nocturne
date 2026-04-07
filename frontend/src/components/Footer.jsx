@@ -4,14 +4,14 @@ import { Link } from 'react-router-dom';
 const Footer = () => {
   return (
     <footer className="w-full px-3 md:px-6 py-8 md:py-12 bg-black relative">
-      {/* Cinematic Glass Chassis */}
+      {}
       <div className="max-w-7xl mx-auto bg-white/[0.03] backdrop-blur-3xl rounded-[2rem] md:rounded-[3rem] border border-white/10 shadow-[0_20px_40px_-15px_rgba(0,0,0,0.8),0_0_30px_-10px_rgba(16,185,129,0.15)] p-8 md:p-12 lg:p-16 relative overflow-hidden group">
         
-        {/* Internal Neural Glow */}
+        {}
         <div className="absolute -bottom-24 -right-24 w-64 md:w-96 h-64 md:h-96 bg-emerald-500/10 blur-[80px] md:blur-[120px] rounded-full group-hover:bg-emerald-500/15 transition-all duration-1000"></div>
         
         <div className="relative z-10 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-10 md:gap-12 lg:gap-16">
-          {/* Brand Neural Space */}
+          {}
           <div className="space-y-6 md:space-y-8 flex flex-col items-center sm:items-start text-center sm:text-left">
             <Link to="/" className="flex items-center gap-3 md:gap-4 group/logo">
               <div className="w-9 h-9 md:w-10 md:h-10 bg-emerald-500 rounded-lg md:rounded-xl flex items-center justify-center shadow-[0_0_20px_rgba(16,185,129,0.4)] transition-transform duration-500 group-hover/logo:scale-110">
@@ -60,7 +60,7 @@ const Footer = () => {
             </div>
           ))}
 
-          {/* System Status Cluster */}
+          {}
           <div className="space-y-6 md:space-y-8 min-w-fit">
             <h4 className="text-emerald-500 font-extrabold text-[10px] uppercase tracking-[0.5em] opacity-80 whitespace-nowrap text-center sm:text-left">Archive Status</h4>
             <div className="p-6 md:p-8 rounded-[2rem] md:rounded-[2.5rem] bg-white/[0.02] border border-white/5 space-y-6 md:space-y-8 shadow-inner">
@@ -80,7 +80,7 @@ const Footer = () => {
           </div>
         </div>
 
-        {/* Legal Neural Cluster */}
+        {}
         <div className="max-w-7xl mx-auto pt-12 md:pt-16 mt-12 md:mt-16 border-t border-white/5 flex flex-col md:flex-row items-center justify-between gap-6 md:gap-8 text-center md:text-left">
           <p className="text-[8px] md:text-[9px] font-black tracking-[0.4em] md:tracking-[0.5em] uppercase text-white/20">© 2026 NOCTURNE HUB. ACCESS GRANTED.</p>
           <div className="flex flex-wrap justify-center items-center gap-6 md:gap-10 text-[8px] md:text-[9px] font-black tracking-[0.4em] md:tracking-[0.5em] uppercase text-white/20">

@@ -39,7 +39,7 @@ function App() {
     <Router>
       <div className="w-full min-h-screen bg-[#000000] selection:bg-emerald-500/30 relative overflow-x-hidden flex flex-col">
         <CustomCursor />
-        {/* Global Atmospheric Glows */}
+        {}
         <div className="fixed top-[-10%] right-[-5%] w-[40%] h-[50%] bg-emerald-500/[0.03] blur-[150px] rounded-full pointer-events-none z-0 rotate-12 animate-pulse"></div>
         <div className="fixed bottom-[-10%] left-[-5%] w-[40%] h-[50%] bg-blue-500/[0.03] blur-[150px] rounded-full pointer-events-none z-0 -rotate-12 animate-pulse delay-1000"></div>
         
@@ -50,18 +50,18 @@ function App() {
             <Route path="/" element={<Home />} />
             <Route path="/home" element={<Home />} />
             
-            {/* Navigational Construction Nodes */}
+            {}
             <Route path="/trending" element={<Construction title="Trending" />} />
             <Route path="/movies" element={<Construction title="Movies" />} />
             <Route path="/tv-shows" element={<Construction title="TV Shows" />} />
             <Route path="/discover" element={<SearchPage />} />
             
-            {/* Platform Feature Nodes */}
+            {}
             <Route path="/ai" element={<Construction title="AI Platform" />} />
             <Route path="/community" element={<Construction title="Social Community" />} />
             <Route path="/friends" element={<Construction title="Network Hub" />} />
             
-            {/* Not Found Void */}
+            {}
             <Route path="*" element={<NotFound />} />
           </Routes>
         </main>

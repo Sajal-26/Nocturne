@@ -10,6 +10,9 @@ import {
     getAdvancedSearch,
     getPersonSearch
 } from '../services/imdb.js';
+import { getNetflixTop10 } from '../services/netflix.js';
+import { getHotstarPopular, getHotstarPopularShows } from '../services/hotstar.js';
+import { getAllPlatformTop10 } from '../services/justwatch.js';
 
 export const typeDefs = `#graphql
   type Movie {
@@ -58,6 +61,90 @@ export const typeDefs = `#graphql
     topic: String
   }
 
+  type NetflixMovie {
+    rank: Int
+    title: String
+    hours_viewed: Float
+    weeks_in_top_10: Int
+    category: String
+    week: String
+    imdb_id: String
+    year: String
+    rating: Float
+    rating_count: Int
+    rating_count_formatted: String
+    certificate: String
+    poster: String
+    duration: String
+    genres: [String]
+    description: String
+  }
+
+  type NetflixTop10Response {
+    week: String
+    data: [NetflixMovie]
+  }
+
+  type HotstarMovie {
+    rank: Int
+    title: String
+    description: String
+    tags: [String]
+    imdb_id: String
+    year: String
+    rating: Float
+    rating_count: Int
+    rating_count_formatted: String
+    certificate: String
+    poster: String
+    duration: String
+    genres: [String]
+    language: String
+  }
+
+  type HotstarPopularResponse {
+    source: String
+    updated_at: String
+    total: Int
+    data: [HotstarMovie]
+  }
+
+  type JustWatchItem {
+    rank: Int
+    title: String
+    imdb_id: String
+    year: Int
+    rating: Float
+    rating_count: Int
+    rating_count_formatted: String
+    certificate: String
+    duration: String
+    runtime_minutes: Int
+    genres: [String]
+    description: String
+    platform: String
+    platform_id: String
+    poster: String
+    backdrop: String
+    url: String
+  }
+
+  type PlatformResults {
+    prime: [JustWatchItem]
+    apple: [JustWatchItem]
+    zee5: [JustWatchItem]
+    sonyliv: [JustWatchItem]
+    mxplayer: [JustWatchItem]
+    crunchyroll: [JustWatchItem]
+  }
+
+  type JustWatchResponse {
+    country: String
+    type: String
+    results: PlatformResults
+    updated_at: String
+  }
+
   type Query {
     trendingMovies(enrich: Boolean): [Movie]
     trendingTVShows(enrich: Boolean): [Movie]
@@ -69,6 +156,10 @@ export const typeDefs = `#graphql
     searchMovies(query: String!): [Movie]
     advancedSearch(filters: AdvanceFilters!): [Movie]
     personSearch(filters: PersonFilters!): [Movie]
+    netflixTop10(type: String, date: String): NetflixTop10Response
+    hotstarPopular: HotstarPopularResponse
+    hotstarPopularShows: HotstarPopularResponse
+    platformTop10(country: String, type: String): JustWatchResponse
     hello: String
   }
 `;
@@ -88,9 +179,6 @@ export const resolvers = {
     topRatedTVShows: async () => {
       return await getTopRatedTVShows();
     },
-    topEnglishMovies: async () => {
-      return await getTopEnglishMovies();
-    },
     bottomMovies: async () => {
       return await getBottomMovies();
     },
@@ -105,6 +193,18 @@ export const resolvers = {
     },
     personSearch: async (_, { filters }) => {
       return await getPersonSearch(filters);
-    }
+    },
+    netflixTop10: async (_, { type, date }) => {
+      return await getNetflixTop10(type, date);
+    },
+    hotstarPopular: async () => {
+      return await getHotstarPopular();
+    },
+    hotstarPopularShows: async () => {
+      return await getHotstarPopularShows();
+    },
+    platformTop10: async (_, { country, type }) => {
+      return await getAllPlatformTop10({ country: country || 'IN', type: type || 'MOVIE' });
+    },
   },
 };

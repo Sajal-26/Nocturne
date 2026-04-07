@@ -27,7 +27,7 @@ export const Navbar = () => {
         scrolled ? 'py-2' : 'py-5'
       }`}
     >
-      {/* Persistent Glass Container */}
+      {}
       <div 
         className={`max-w-7xl mx-auto rounded-[2rem] transition-all duration-500 overflow-hidden glass border-white/10 ${
           scrolled 

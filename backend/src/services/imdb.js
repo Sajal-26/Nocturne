@@ -1,7 +1,5 @@
 const IMDB_GQL_URL = "https://caching.graphql.imdb.com/";
-
 const TMDB_BEARER_TOKEN = "eyJhbGciOiJIUzI1NiJ9.eyJhdWQiOiJkNDc3NmUyMmY3OGQ3ZjY2MGJhZDFmNWFiNDRhZGI2ZSIsIm5iZiI6MTczMzEzOTQ1NS44NTc5OTk4LCJzdWIiOiI2NzRkOWJmZjc1Y2QwMTcwNmE3Y2U0YTIiLCJzY29wZXMiOlsiYXBpX3JlYWQiXSwidmVyc2lvbiI6MX0.Kx_uKM8l5kDMjkKJYrklxWVg7DwLO93EvnksuP5kgCw";
-
 const TMDB_IMAGE_BASE = "https://image.tmdb.org/t/p/w500";
 
 const searchCompanies = async (query) => {
@@ -28,7 +26,7 @@ const searchCompanies = async (query) => {
             poster: c.logo_path ? `${TMDB_IMAGE_BASE}${c.logo_path}` : null,
             duration: c.origin_country || 'Production Company',
             titleType: 'company',
-            description: `Production Company · ${c.origin_country || 'International'}`
+            description: `Production Company - ${c.origin_country || 'International'}`
         }));
     } catch (err) {
         console.error('[TMDb Company Search Error]', err.message);
@@ -45,49 +43,41 @@ const enrichWithTMDb = async (imdbId) => {
         });
         if (!findRes.ok) return {};
         const findData = await findRes.json();
-
         const movieResult = findData.movie_results?.[0];
         const tvResult = findData.tv_results?.[0];
         const tmdbEntry = movieResult || tvResult;
         if (!tmdbEntry) return {};
-
         const mediaType = movieResult ? 'movie' : 'tv';
         const tmdbId = tmdbEntry.id;
-
         const imagesUrl = `https://api.themoviedb.org/3/${mediaType}/${tmdbId}/images?include_image_language=en,null`;
         const imagesRes = await originalFetch(imagesUrl, {
             headers: { 'Authorization': `Bearer ${TMDB_BEARER_TOKEN}`, 'accept': 'application/json' }
         });
         if (!imagesRes.ok) return {};
         const images = await imagesRes.json();
-
         const backdropPath = images.backdrops?.[0]?.file_path;
         const backdrop = backdropPath
             ? `https://image.tmdb.org/t/p/w1280${backdropPath}`
             : null;
-
         const logoEntry = (images.logos || []).find(l => l.iso_639_1 === 'en') || images.logos?.[0];
         const logo = logoEntry?.file_path
             ? `https://image.tmdb.org/t/p/w500${logoEntry.file_path}`
             : null;
-
         return { backdrop, logo };
     } catch (e) {
         return {};
     }
 };
 
-const calculateSimilarity = (s1, s2) => {
+export const calculateSimilarity = (s1, s2) => {
     s1 = (s1 || "").toLowerCase().trim();
     s2 = (s2 || "").toLowerCase().trim();
-    
     if (s1 === s2) return 1.0;
     if (s2.includes(s1) || s1.includes(s2)) {
         if (s2.startsWith(s1) || s1.startsWith(s2)) return 0.90;
         const ratio = Math.min(s1.length, s2.length) / Math.max(s1.length, s2.length);
         if (ratio >= 0.4) return Math.max(0.85, ratio);
     }
-
     const costs = [];
     for (let i = 0; i <= s1.length; i++) {
         let lastValue = i;
@@ -105,7 +95,6 @@ const calculateSimilarity = (s1, s2) => {
         }
         if (i > 0) costs[s2.length] = lastValue;
     }
-    
     const maxLength = Math.max(s1.length, s2.length);
     if (maxLength === 0) return 1.0;
     return (maxLength - costs[s2.length]) / maxLength;
@@ -138,7 +127,6 @@ const fetchWithProxy = async (url, options = {}) => {
         lastWorkingProxyIndex,
         ...Array.from({ length: PROXY_GENERATORS.length }, (_, i) => i).filter(i => i !== lastWorkingProxyIndex)
     ];
-
     for (const i of order) {
         const isDirect = i === 0;
         const proxyUrl = PROXY_GENERATORS[i](url);
@@ -166,15 +154,12 @@ const fetchWithProxy = async (url, options = {}) => {
 const fetch = async (url, options) => {
     const bodyStr = options?.body || "";
     const cacheKey = `${url}|${bodyStr}`;
-    
     const hit = GLOBAL_CACHE.get(cacheKey);
     if (hit && hit.expiry > Date.now()) {
         return { ok: true, status: 200, json: async () => hit.data };
     }
-    
     const isImdb = url.includes('imdb.com') || url.includes('sg.media-imdb') || url.includes('graphql.imdb');
     const response = isImdb ? await fetchWithProxy(url, options) : await originalFetch(url, options);
-    
     if (response.ok) {
         const responseClone = response.clone();
         const data = await responseClone.json();
@@ -299,18 +284,15 @@ export const getTrendingMovies = async (enrich = false) => {
       }
     }
     `;
-
     try {
         const response = await fetch(IMDB_GQL_URL, {
             method: "POST",
             headers: HEADERS,
             body: JSON.stringify({ query })
         });
-
         if (!response.ok) throw new Error(`Status: ${response.status}`);
         const json = await response.json();
         if (!json.data) return [];
-
         const movies = json.data.chartTitles.edges.map((item, index) => {
             const node = item.node;
             return {
@@ -330,18 +312,15 @@ export const getTrendingMovies = async (enrich = false) => {
                 genres: node.genres?.genres?.map(g => g.text) || [],
                 countries: node.countriesOfOrigin?.countries?.map(c => c.id) || [],
                 languages: node.spokenLanguages?.spokenLanguages?.map(l => l.id) || [],
-                description: node.plot?.plotText?.plainText || "Synchronizing Neural Feed..."
+                description: node.plot?.plotText?.plainText || null
             };
         });
-
         if (!enrich) return movies;
-
         const heroMovies = movies.slice(0, 8);
         const enrichments = await Promise.all(heroMovies.map(m => enrichWithTMDb(m.imdb_id)));
         return movies.map((movie, idx) =>
             idx < 8 ? { ...movie, ...enrichments[idx] } : movie
         );
-
     } catch (err) {
         return [];
     }
@@ -349,7 +328,6 @@ export const getTrendingMovies = async (enrich = false) => {
 
 export const getTitlesBatch = async (ids) => {
     if (!ids || ids.length === 0) return [];
-    
     const queries = ids.map((id, index) => {
         return `t${index}: title(id: "${id}") {
             id
@@ -367,9 +345,7 @@ export const getTitlesBatch = async (ids) => {
             plot { plotText { plainText } }
         }`;
     }).join('\n');
-
     const query = `query {\n${queries}\n}`;
-
     try {
         const response = await fetch(IMDB_GQL_URL, {
             method: "POST",
@@ -378,7 +354,6 @@ export const getTitlesBatch = async (ids) => {
         });
         const json = await response.json();
         if (!json.data) return [];
-
         return Object.values(json.data).filter(node => node !== null).map((node, index) => ({
             rank: index + 1,
             imdb_id: node.id,
@@ -396,7 +371,7 @@ export const getTitlesBatch = async (ids) => {
             genres: node.genres?.genres?.map(g => g.text) || [],
             countries: node.countriesOfOrigin?.countries?.map(c => c.id) || [],
             languages: node.spokenLanguages?.spokenLanguages?.map(l => l.id) || [],
-            description: node.plot?.plotText?.plainText || "Synchronizing Neural Feed..."
+            description: node.plot?.plotText?.plainText || null
         }));
     } catch (err) { return []; }
 };
@@ -424,18 +399,15 @@ export const getTrendingTVShows = async (enrich = false) => {
       }
     }
     `;
-
     try {
         const response = await fetch(IMDB_GQL_URL, {
             method: "POST",
             headers: { ...HEADERS, Referer: "https://www.imdb.com/chart/tvmeter/" },
             body: JSON.stringify({ query })
         });
-
         if (!response.ok) throw new Error(`Status: ${response.status}`);
         const json = await response.json();
         if (!json.data) return [];
-
         const tvShows = json.data.chartTitles.edges.map((item, index) => {
             const node = item.node;
             return {
@@ -455,18 +427,15 @@ export const getTrendingTVShows = async (enrich = false) => {
                 genres: node.genres?.genres?.map(g => g.text) || [],
                 countries: node.countriesOfOrigin?.countries?.map(c => c.id) || [],
                 languages: node.spokenLanguages?.spokenLanguages?.map(l => l.id) || [],
-                description: node.plot?.plotText?.plainText || "Synchronizing Neural Feed..."
+                description: node.plot?.plotText?.plainText || null
             };
         });
-
         if (!enrich) return tvShows;
-
         const heroShows = tvShows.slice(0, 8);
         const enrichments = await Promise.all(heroShows.map(s => enrichWithTMDb(s.imdb_id)));
         return tvShows.map((tv, idx) =>
             idx < 8 ? { ...tv, ...enrichments[idx] } : tv
         );
-
     } catch (err) {
         return [];
     }
@@ -490,23 +459,19 @@ export const getTopRatedMovies = async () => {
       }
     }
     `;
-
     try {
         const response = await fetch(IMDB_GQL_URL, {
             method: "POST",
             headers: { ...HEADERS, Referer: "https://www.imdb.com/chart/top/" },
             body: JSON.stringify({ query })
         });
-
         if (!response.ok) throw new Error(`Status: ${response.status}`);
         const json = await response.json();
         if (!json.data) return [];
-
         return json.data.chartTitles.edges.map((item, index) => {
             const node = item.node;
             const seconds = node.runtime?.seconds || null;
             const voteCount = node.ratingsSummary?.voteCount || 0;
-
             return {
                 rank: index + 1,
                 imdb_id: node.id,
@@ -543,19 +508,15 @@ export const getTopRatedTVShows = async () => {
       }
     }
     `;
-
     try {
         const response = await fetch(IMDB_GQL_URL, {
             method: "POST",
             headers: { ...HEADERS, Referer: "https://www.imdb.com/chart/toptv/" },
             body: JSON.stringify({ query })
         });
-
         if (!response.ok) throw new Error(`Status: ${response.status}`);
-
         const json = await response.json();
         if (!json.data) return [];
-
         return json.data.chartTitles.edges.map((item, index) => {
             const node = item.node;
             const voteCount = node.ratingsSummary?.voteCount || 0;
@@ -595,7 +556,6 @@ export const getTopEnglishMovies = async () => {
       }
     }
     `;
-
     try {
         const response = await fetch(IMDB_GQL_URL, {
             method: "POST",
@@ -605,12 +565,10 @@ export const getTopEnglishMovies = async () => {
         if (!response.ok) throw new Error(`Status: ${response.status}`);
         const json = await response.json();
         if (!json.data) return [];
-
         return json.data.chartTitles.edges.map((item, index) => {
             const node = item.node;
             const voteCount = node.ratingsSummary?.voteCount || 0;
             const seconds = node.runtime?.seconds || null;
-
             return {
                 rank: index + 1,
                 imdb_id: node.id,
@@ -647,7 +605,6 @@ export const getBottomMovies = async () => {
       }
     }
     `;
-
     try {
         const response = await fetch(IMDB_GQL_URL, {
             method: "POST",
@@ -657,12 +614,10 @@ export const getBottomMovies = async () => {
         if (!response.ok) throw new Error(`Status: ${response.status}`);
         const json = await response.json();
         if (!json.data) return [];
-
         return json.data.chartTitles.edges.map((item, index) => {
             const node = item.node;
             const voteCount = node.ratingsSummary?.voteCount || 0;
             const seconds = node.runtime?.seconds || null;
-
             return {
                 rank: index + 1,
                 imdb_id: node.id,
@@ -728,7 +683,6 @@ export const getTopRatedByCountry = async (countryCode = "IN") => {
             return [];
         }
     }
-
     const hash = "0a6de8896f4199e62945d43355755eb9ee4155d6b0d7923b0018d7068e33ccb7";
     const variables = {
         "first": 50,
@@ -738,22 +692,18 @@ export const getTopRatedByCountry = async (countryCode = "IN") => {
         "sortBy": "USER_RATING",
         "sortOrder": "DESC"
     };
-
     const url = `${IMDB_GQL_URL}?operationName=AdvancedTitleSearch&variables=${encodeURIComponent(JSON.stringify(variables))}&extensions=${encodeURIComponent(JSON.stringify({
         persistedQuery: { version: 1, sha256Hash: hash }
     }))}`;
-
     try {
         const response = await fetch(url, { method: "GET", headers: HEADERS });
         if (!response.ok) throw new Error(`Status: ${response.status}`);
         const json = await response.json();
         if (!json.data?.advancedTitleSearch) return [];
-
         return json.data.advancedTitleSearch.edges.map((item, index) => {
             const node = item.node.title;
             const voteCount = node.ratingsSummary?.voteCount || 0;
             const seconds = node.runtime?.seconds || null;
-
             return {
                 rank: index + 1,
                 imdb_id: node.id,
@@ -772,19 +722,71 @@ export const getTopRatedByCountry = async (countryCode = "IN") => {
     }
 };
 
+export const searchImdbPure = async (query) => {
+    if (!query) return [];
+    const firstChar = query.charAt(0).toLowerCase();
+    const imdbUrl = `https://v3.sg.media-imdb.com/suggestion/${firstChar}/${encodeURIComponent(query)}.json`;
+    try {
+        const response = await fetch(imdbUrl);
+        if (!response.ok) return [];
+        const data = await response.json();
+        const imdbResults = data?.d || [];
+        const IMDB_TYPE_LABELS = {
+            'feature': 'MOVIE',
+            'tv series': 'TV SERIES',
+            'tv mini-series': 'MINI SERIES',
+            'tv movie': 'TV MOVIE',
+            'tv special': 'TV SPECIAL',
+            'tv short': 'SHORT',
+            'short': 'SHORT',
+            'video': 'VIDEO',
+            'video game': 'GAME',
+            'podcast series': 'PODCAST',
+            'music video': 'MUSIC VIDEO',
+        };
+        const imdbMapped = imdbResults.map((item, index) => {
+            const isPerson = item.id.startsWith('nm');
+            const isCompany = item.id.startsWith('co');
+            const rawType = (item.q || '').toLowerCase();
+            const friendlyLabel = IMDB_TYPE_LABELS[rawType] || (item.q || 'UNKNOWN').toUpperCase();
+            return {
+                rank: index + 1,
+                imdb_id: item.id,
+                title: item.l,
+                year: item.y || null,
+                rating: null,
+                rating_count: 0,
+                rating_count_formatted: isCompany ? "ENTITY" : "0",
+                certificate: isPerson ? "PERSON" : (isCompany ? "COMPANY" : friendlyLabel),
+                poster: item.i?.imageUrl || null,
+                duration: item.s || "N/A",
+                titleType: isPerson ? 'person' : (isCompany ? 'company' : (rawType.includes('tv') ? 'tv' : 'movie'))
+            };
+        });
+        const all = imdbMapped.map(item => ({
+            ...item,
+            _score: calculateSimilarity(query, item.title || '')
+        }));
+        all.sort((a, b) => b._score - a._score);
+        return all.slice(0, 5).map((item, idx) => {
+            const { _score, ...rest } = item;
+            return { ...rest, rank: idx + 1 };
+        });
+    } catch (err) {
+        return [];
+    }
+};
+
 export const searchMovies = async (query) => {
     if (!query) return [];
     const firstChar = query.charAt(0).toLowerCase();
     const imdbUrl = `https://v3.sg.media-imdb.com/suggestion/${firstChar}/${encodeURIComponent(query)}.json`;
-
     const [imdbRes, tmdbCompanies] = await Promise.allSettled([
         fetch(imdbUrl).then(r => r.ok ? r.json() : { d: [] }).catch(() => ({ d: [] })),
         searchCompanies(query)
     ]);
-
     const imdbResults = (imdbRes.status === 'fulfilled' ? imdbRes.value?.d : null) || [];
     const companyResults = (tmdbCompanies.status === 'fulfilled' ? tmdbCompanies.value : null) || [];
-
     const IMDB_TYPE_LABELS = {
         'feature': 'MOVIE',
         'tv series': 'TV SERIES',
@@ -798,7 +800,6 @@ export const searchMovies = async (query) => {
         'podcast series': 'PODCAST',
         'music video': 'MUSIC VIDEO',
     };
-
     const imdbMapped = imdbResults.map((item, index) => {
         const isPerson = item.id.startsWith('nm');
         const isCompany = item.id.startsWith('co');
@@ -818,17 +819,13 @@ export const searchMovies = async (query) => {
             titleType: isPerson ? 'person' : (isCompany ? 'company' : 'movie')
         };
     });
-
     const seen = new Set(imdbMapped.map(i => i.imdb_id));
     const mergedCompanies = companyResults.filter(c => !seen.has(c.imdb_id));
-
     const all = [...imdbMapped, ...mergedCompanies].map(item => ({
         ...item,
         _score: calculateSimilarity(query, item.title || '')
     }));
-
     all.sort((a, b) => b._score - a._score);
-
     return all.slice(0, 8).map((item, idx) => {
         const { _score, ...rest } = item;
         return { ...rest, rank: idx + 1 };
@@ -838,50 +835,39 @@ export const searchMovies = async (query) => {
 export const getAdvancedSearch = async (filters) => {
     if (filters.query) {
         let items = await searchMovies(filters.query);
-        
         const validItems = items.filter(i => {
             const matchScore = calculateSimilarity(filters.query, i.title);
             return matchScore >= 0.80;
         });
-
         const movieItems = validItems.filter(i => !i.imdb_id.startsWith('nm') && !i.imdb_id.startsWith('co')).slice(0, 15);
         const personItems = validItems.filter(i => i.imdb_id.startsWith('nm')).slice(0, 5);
         const companyItems = validItems.filter(i => i.imdb_id.startsWith('co')).slice(0, 3);
-        
         const tmdbCompanies = await searchCompanies(filters.query);
         const hybridCompanyItems = [...tmdbCompanies, ...companyItems]
             .filter((v, i, a) => a.findIndex(t => t.imdb_id === v.imdb_id) === i)
             .slice(0, 5);
-
         let enriched = await getTitlesBatch(movieItems.map(i => i.imdb_id));
-        
         const peopleList = personItems.map((p) => ({
             ...p,
             titleType: 'person',
             description: p.duration !== 'N/A' ? p.duration : 'Actor / Director'
         }));
-        
         const companyList = hybridCompanyItems.map((c) => ({
             ...c,
             titleType: 'company',
             description: c.description || 'Production Company'
         }));
-        
         const allResults = [...peopleList, ...companyList, ...enriched].map(item => ({
             ...item,
             _matchScore: calculateSimilarity(filters.query, item.title || '')
         }));
-
         allResults.sort((a, b) => b._matchScore - a._matchScore);
-
         const ranked = allResults.map((item, idx) => {
             const { _matchScore, ...rest } = item;
             return { ...rest, rank: idx + 1 };
         });
-        
         return ranked;
     }
-
     const hash = "0a6de8896f4199e62945d43355755eb9ee4155d6b0d7923b0018d7068e33ccb7";
     const variables = {
         "first": 50,
@@ -889,13 +875,10 @@ export const getAdvancedSearch = async (filters) => {
         "sortBy": filters.sortBy || "POPULARITY",
         "sortOrder": "ASC"
     };
-    
     if (filters.query) variables.searchText = filters.query;
-
     if (filters.genres?.length) variables.genreConstraint = { allGenreIds: filters.genres };
     if (filters.languages?.length) variables.languageConstraint = { allLanguages: filters.languages };
     if (filters.countries?.length) variables.originCountryConstraint = { allCountries: filters.countries };
-    
     if (filters.ratingMin || filters.ratingMax) {
         variables.userRatingsConstraint = {
             aggregateRatingRange: {
@@ -904,12 +887,10 @@ export const getAdvancedSearch = async (filters) => {
             }
         };
     }
-
     if (filters.votesMin) {
         if (!variables.userRatingsConstraint) variables.userRatingsConstraint = {};
         variables.userRatingsConstraint.ratingsCountRange = { min: parseInt(filters.votesMin) };
     }
-
     if (filters.yearStart || filters.yearEnd) {
         variables.releaseDateConstraint = {
             releaseDateRange: {
@@ -918,7 +899,6 @@ export const getAdvancedSearch = async (filters) => {
             }
         };
     }
-
     if (filters.runtimeMin || filters.runtimeMax) {
         variables.runtimeConstraint = {
             runtimeRangeMinutes: {
@@ -927,24 +907,19 @@ export const getAdvancedSearch = async (filters) => {
             }
         };
     }
-
     if (filters.titleType && filters.titleType !== 'ALL') {
         variables.titleTypeConstraint = { anyTitleTypeIds: [filters.titleType] };
     }
-
     if (filters.adult === 'ONLY') {
         variables.adultSearchConstraint = { isAdult: "ONLY" };
     }
-
     const url = `${IMDB_GQL_URL}?operationName=AdvancedTitleSearch&variables=${encodeURIComponent(JSON.stringify(variables))}&extensions=${encodeURIComponent(JSON.stringify({
         persistedQuery: { version: 1, sha256Hash: hash }
     }))}`;
-
     try {
         const response = await fetch(url, { method: "GET", headers: HEADERS });
         const json = await response.json();
         if (!json.data?.advancedTitleSearch) return [];
-
         return json.data.advancedTitleSearch.edges.map((item, index) => {
             const node = item.node.title;
             const credits = node.principalCredits || [];
@@ -978,7 +953,6 @@ export const getPersonSearch = async (filters) => {
         "sortBy": "POPULARITY",
         "sortOrder": "ASC"
     };
-
     if (filters.birthStart || filters.birthEnd) {
         variables.birthDateConstraint = {
             birthDateRange: {
@@ -987,24 +961,19 @@ export const getPersonSearch = async (filters) => {
             }
         };
     }
-
     if (filters.gender) {
         variables.genderIdentityConstraint = { anyGender: [filters.gender.toUpperCase()] };
     }
-
     if (filters.topic) {
         variables.biographyConstraint = { searchText: filters.topic };
     }
-
     const url = `${IMDB_GQL_URL}?operationName=AdvancedNameSearch&variables=${encodeURIComponent(JSON.stringify(variables))}&extensions=${encodeURIComponent(JSON.stringify({
         persistedQuery: { version: 1, sha256Hash: hash }
     }))}`;
-
     try {
         const response = await fetch(url, { method: "GET", headers: HEADERS });
         const json = await response.json();
         if (!json.data?.advancedNameSearch) return [];
-
         return json.data.advancedNameSearch.edges.map((item, index) => {
             const node = item.node.name;
             return {
