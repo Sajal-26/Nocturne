@@ -159,7 +159,6 @@ async function fetchHotstarData(deeplink, typeHint) {
       data: enriched,
     };
   } catch (error) {
-    console.error(`Hotstar fetch error for ${typeHint}:`, error.message);
     return {
         source: "hotstar",
         updated_at: new Date().toISOString(),

@@ -98,7 +98,7 @@ async function startServer() {
 
     const PORT = process.env.PORT || 4000;
     httpServer.listen(PORT, () => {
-        console.log(`[SERVER] Nocturne Backend is operational on port ${PORT}`);
+        console.log(`\x1b[32m[SERVER]\x1b[0m Nocturne Backend is operational on port ${PORT}`);
         warmCache();
     });
 }

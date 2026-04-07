@@ -2,42 +2,45 @@
 @import "tailwindcss";
 
 :root {
-  font-family: 'Poppins', sans-serif;
+  font-family: 'Poppins', '-apple-system', 'BlinkMacSystemFont', 'Inter', sans-serif;
   line-height: 1.5;
   font-weight: 400;
 
   color-scheme: dark;
-  color: rgba(255, 255, 255, 0.95);
+  color: rgba(255, 255, 255, 0.9);
   background-color: #000000;
 
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-
-  
-  --cursor: pointer;
-
-  
-  --glass-bg: rgba(15, 15, 15, 0.7);
-  --glass-border: rgba(255, 255, 255, 0.08);
-  --glass-blur: 16px;
+  /* Glassmorphism Tokens */
+  --glass-bg: rgba(15, 15, 15, 0.6);
+  --glass-border: rgba(255, 255, 255, 0.06);
+  --glass-blur: 24px;
   --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.8);
-}
-
-a, button, [role="button"] {
-  cursor: pointer !important;
+  
+  /* Brand Tokens */
+  --accent: #10b981;
+  --accent-glow: rgba(16, 185, 129, 0.3);
 }
 
 @layer utilities {
-  .glass {
+  .glass-premium {
     background: rgba(255, 255, 255, 0.03);
-    backdrop-filter: blur(8px);
+    backdrop-filter: blur(24px) saturate(180%);
     border: 1px solid rgba(255, 255, 255, 0.05);
   }
 
-  .text-glow {
-    text-shadow: 0 0 20px rgba(255, 255, 255, 0.3);
+  .text-glow-accent {
+    text-shadow: 0 0 15px var(--accent-glow);
+  }
+
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
   }
 }
 

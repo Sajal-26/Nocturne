@@ -36,8 +36,7 @@ async function fetchNetflixData() {
     };
     return data;
   } catch (err) {
-    console.error('Error fetching Netflix data:', err.message);
-    throw new Error('Failed to fetch Netflix Top 10 data');
+    throw err;
   }
 }
 
@@ -136,6 +135,7 @@ export async function getNetflixTop10(type = 'movie', date = null) {
     category: movie.category,
     week: movie.week,
     imdb_id: movie.imdb_id || null,
+    titleType: movie.titleType || (movie.category && movie.category.includes('TV') ? 'tvSeries' : 'movie'),
     year: movie.year || null,
     rating: movie.rating || null,
     rating_count: movie.rating_count || 0,

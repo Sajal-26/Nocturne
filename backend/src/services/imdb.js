@@ -38,22 +38,28 @@ const enrichWithTMDb = async (imdbId) => {
     if (!imdbId) return {};
     try {
         const findUrl = `https://api.themoviedb.org/3/find/${imdbId}?external_source=imdb_id`;
-        const findRes = await originalFetch(findUrl, {
+        const findRes = await fetch(findUrl, {
             headers: { 'Authorization': `Bearer ${TMDB_BEARER_TOKEN}`, 'accept': 'application/json' }
         });
-        if (!findRes.ok) return {};
+        if (!findRes.ok) {
+            return {};
+        }
         const findData = await findRes.json();
         const movieResult = findData.movie_results?.[0];
         const tvResult = findData.tv_results?.[0];
         const tmdbEntry = movieResult || tvResult;
-        if (!tmdbEntry) return {};
+        if (!tmdbEntry) {
+            return {};
+        }
         const mediaType = movieResult ? 'movie' : 'tv';
         const tmdbId = tmdbEntry.id;
         const imagesUrl = `https://api.themoviedb.org/3/${mediaType}/${tmdbId}/images?include_image_language=en,null`;
-        const imagesRes = await originalFetch(imagesUrl, {
+        const imagesRes = await fetch(imagesUrl, {
             headers: { 'Authorization': `Bearer ${TMDB_BEARER_TOKEN}`, 'accept': 'application/json' }
         });
-        if (!imagesRes.ok) return {};
+        if (!imagesRes.ok) {
+            return {};
+        }
         const images = await imagesRes.json();
         const backdropPath = images.backdrops?.[0]?.file_path;
         const backdrop = backdropPath
@@ -63,6 +69,8 @@ const enrichWithTMDb = async (imdbId) => {
         const logo = logoEntry?.file_path
             ? `https://image.tmdb.org/t/p/w500${logoEntry.file_path}`
             : null;
+        
+
         return { backdrop, logo };
     } catch (e) {
         return {};
@@ -158,16 +166,21 @@ const fetch = async (url, options) => {
     if (hit && hit.expiry > Date.now()) {
         return { ok: true, status: 200, json: async () => hit.data };
     }
-    const isImdb = url.includes('imdb.com') || url.includes('sg.media-imdb') || url.includes('graphql.imdb');
-    const response = isImdb ? await fetchWithProxy(url, options) : await originalFetch(url, options);
-    if (response.ok) {
-        const responseClone = response.clone();
-        const data = await responseClone.json();
-        if (data && !data.errors) {
-            GLOBAL_CACHE.set(cacheKey, { data, expiry: Date.now() + CACHE_TTL });
+    const shouldProxy = url.includes('imdb') || url.includes('themoviedb.org');
+    try {
+        const response = shouldProxy ? await fetchWithProxy(url, options) : await originalFetch(url, options);
+        if (response.ok) {
+            const responseClone = response.clone();
+            const data = await responseClone.json();
+            if (data && !data.errors) {
+                GLOBAL_CACHE.set(cacheKey, { data, expiry: Date.now() + CACHE_TTL });
+            }
         }
+
+        return response;
+    } catch (err) {
+        throw err;
     }
-    return response;
 };
 
 const normalizeCertificate = (cert) => {
@@ -316,11 +329,21 @@ export const getTrendingMovies = async (enrich = false) => {
             };
         });
         if (!enrich) return movies;
-        const heroMovies = movies.slice(0, 8);
+        
+        {/* Force fresh data for enrichment to avoid cached nulls */}
+        const bodyStr = JSON.stringify({ query });
+        const cacheKey = `${IMDB_GQL_URL}|${bodyStr}`;
+        GLOBAL_CACHE.delete(cacheKey);
+
+        const heroMovies = movies.slice(0, 5);
         const enrichments = await Promise.all(heroMovies.map(m => enrichWithTMDb(m.imdb_id)));
-        return movies.map((movie, idx) =>
-            idx < 8 ? { ...movie, ...enrichments[idx] } : movie
+        
+        const finalResults = movies.map((movie, idx) =>
+            idx < 5 ? { ...movie, ...enrichments[idx] } : movie
         );
+
+
+        return finalResults;
     } catch (err) {
         return [];
     }
@@ -431,11 +454,20 @@ export const getTrendingTVShows = async (enrich = false) => {
             };
         });
         if (!enrich) return tvShows;
-        const heroShows = tvShows.slice(0, 8);
+
+        const bodyStr = JSON.stringify({ query });
+        const cacheKey = `${IMDB_GQL_URL}|${bodyStr}`;
+        GLOBAL_CACHE.delete(cacheKey);
+
+        const heroShows = tvShows.slice(0, 5);
         const enrichments = await Promise.all(heroShows.map(s => enrichWithTMDb(s.imdb_id)));
-        return tvShows.map((tv, idx) =>
-            idx < 8 ? { ...tv, ...enrichments[idx] } : tv
+        
+        const finalResults = tvShows.map((show, idx) =>
+            idx < 5 ? { ...show, ...enrichments[idx] } : show
         );
+
+
+        return finalResults;
     } catch (err) {
         return [];
     }

@@ -208,7 +208,7 @@ const SearchPage = () => {
 
   return (
     <div className="pt-24 md:pt-32 min-h-screen px-4 md:px-12 pb-20">
-      <div className="max-w-[1400px] mx-auto mb-12">
+      <div className="max-w-[1700px] mx-auto mb-12">
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
           <div className="flex-grow max-w-4xl">
             <div className="relative group">
@@ -266,7 +266,7 @@ const SearchPage = () => {
             showMobileFilters ? 'max-h-[2000px] opacity-100 mt-4' : 'max-h-0 opacity-0 mt-0'
           }`}
         >
-          <div className="bg-black/40 border border-white/5 rounded-[2rem] p-6 backdrop-blur-3xl shadow-2xl">
+          <div className="bg-black/40 border border-white/5 rounded-xl p-6 backdrop-blur-3xl shadow-2xl">
             <div className="flex items-center justify-between mb-6">
               <h3 className="text-xs font-black uppercase tracking-[0.3em] text-white italic flex items-center gap-2.5">
                 <SlidersHorizontal size={15} className="text-emerald-500" />
@@ -426,10 +426,10 @@ const SearchPage = () => {
         </div>
       </div>
 
-      <div className="max-w-[1400px] mx-auto flex flex-col lg:flex-row gap-10">
+      <div className="max-w-[1700px] mx-auto flex flex-col lg:flex-row gap-8 xl:gap-12">
         <div className="hidden lg:block lg:w-80 shrink-0">
-          <div className="sticky top-32 space-y-6">
-            <div className="bg-black/40 border border-white/5 rounded-[2.5rem] p-8 backdrop-blur-3xl shadow-2xl">
+          <div className="sticky top-16 space-y-6">
+            <div className="bg-black/40 border border-white/5 rounded-2xl p-8 backdrop-blur-3xl shadow-2xl">
               <div className="flex items-center justify-between mb-8">
                 <h3 className="text-xs font-black uppercase tracking-[0.3em] text-white italic flex items-center gap-2.5">
                   <SlidersHorizontal size={15} className="text-emerald-500" /> Advanced Filters
@@ -600,17 +600,20 @@ const SearchPage = () => {
 
         <div className="flex-grow">
           {isLoading ? (
-            <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-6">
+            <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6 lg:gap-8">
               {[...Array(8)].map((_, i) => (
-                <div key={i} className="aspect-[2/3] bg-white/[0.02] border border-white/5 rounded-xl animate-pulse" />
+                <div key={i} className="aspect-[2/3] bg-white/[0.02] border border-white/5 rounded-[2.5rem] animate-pulse" />
               ))}
             </div>
           ) : results.length > 0 ? (
-            <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-6 md:gap-8">
+            <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6 lg:gap-8">
               {results.slice(0, visibleCount).map((item) => (
-                item.titleType === 'person' || item.titleType === 'company' || item.imdb_id?.startsWith('nm') || item.imdb_id?.startsWith('co')
-                ? <PersonCard key={`person-${item.imdb_id}`} item={item} />
-                : <MovieCard key={`${item.titleType}-${item.imdb_id}`} item={item} />
+                <div key={`${item.titleType}-${item.imdb_id}`} className="w-full">
+                  {item.titleType === 'person' || item.titleType === 'company' || item.imdb_id?.startsWith('nm') || item.imdb_id?.startsWith('co')
+                    ? <PersonCard item={item} className="w-full h-full" />
+                    : <MovieCard item={item} className="w-full h-full" />
+                  }
+                </div>
               ))}
             </div>
           ) : (

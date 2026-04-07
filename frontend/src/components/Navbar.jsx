@@ -1,15 +1,17 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Search, User, X, Bell, Sparkles, Users, MessageSquare, ChevronDown, LogOut, Settings, Bookmark, ArrowLeft, Home, Play, Monitor, LayoutGrid, TrendingUp, Compass, Plus } from 'lucide-react';
+import { Search, User, X, Bell, Sparkles, Users, MessageSquare, ChevronDown, LogOut, Settings, Bookmark, ArrowLeft, Home, Play, Monitor, LayoutGrid, TrendingUp, Compass, Plus, Music } from 'lucide-react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 
 const Navbar = () => {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const [isMoreOpen, setIsMoreOpen] = useState(false);
   const [isSearchActive, setIsSearchActive] = useState(false);
   const [activeRect, setActiveRect] = useState(null);
   const location = useLocation();
   const profileRef = useRef(null);
+  const moreRef = useRef(null);
   const searchInputRef = useRef(null);
   const navContainerRef = useRef(null);
   const navigate = useNavigate();
@@ -27,6 +29,9 @@ const Navbar = () => {
     const handleClickOutside = (event) => {
       if (profileRef.current && !profileRef.current.contains(event.target)) {
         setIsProfileOpen(false);
+      }
+      if (moreRef.current && !moreRef.current.contains(event.target)) {
+        setIsMoreOpen(false);
       }
       if (searchWrapRef.current && !searchWrapRef.current.contains(event.target)) {
         setShowSuggestions(false);
@@ -100,101 +105,128 @@ const Navbar = () => {
   }, [location.pathname, isSearchActive]);
 
   const primaryLinks = [
-    { name: 'Home', path: '/', icon: <Home size={20} /> },
-    { name: 'Movies', path: '/movies', icon: <Play size={20} /> },
-    { name: 'TV Shows', path: '/tv-shows', icon: <Monitor size={20} /> },
-    { name: 'Discover', path: '/discover', icon: <Compass size={20} /> }
+    { name: 'Home', path: '/', icon: <Home size={18} /> },
+    { name: 'Movies', path: '/movies', icon: <Play size={18} /> },
+    { name: 'TV Shows', path: '/tv-shows', icon: <Monitor size={18} /> },
+    { name: 'Discover', path: '/discover', icon: <Compass size={18} /> },
+    { name: 'Music', path: '/music', icon: <Music size={18} /> }
   ];
 
   const platformLinks = [
-    { name: 'AI', path: '/ai', icon: <Sparkles size={16} /> },
-    { name: 'Community', path: '/community', icon: <MessageSquare size={16} /> },
-    { name: 'Friends', path: '/friends', icon: <Users size={16} /> }
+    { name: 'Intelligence', path: '/ai', icon: <Sparkles size={14} /> },
+    { name: 'Community', path: '/community', icon: <MessageSquare size={14} /> },
+    { name: 'Friends', path: '/friends', icon: <Users size={14} /> }
   ];
 
   const bottomNavItems = [
     { name: 'Home', path: '/', icon: <Home size={22} /> },
     { name: 'Movies', path: '/movies', icon: <Play size={22} /> },
-    { name: 'AI', path: '/ai', icon: <Sparkles size={22} /> },
-    { name: 'Social', path: '/community', icon: <Users size={22} /> },
-    { name: 'Explore', path: '#more', icon: <LayoutGrid size={22} /> }
+    { name: 'Music', path: '/music', icon: <Music size={22} /> },
+    { name: 'Trending', path: '/discover', icon: <Compass size={22} /> },
+    { name: 'More', path: '#more', icon: <LayoutGrid size={22} /> }
   ];
 
   return (
     <>
-      <div className={`fixed top-0 left-0 right-0 z-[100] transition-all duration-1000 flex justify-center px-6 md:px-12 pointer-events-none animate-in slide-in-from-top-full duration-700 ${
+        <div className={`fixed top-0 left-0 right-0 z-[100] transition-all duration-700 flex justify-center px-4 md:px-8 pointer-events-none ${
         isScrolled ? 'mt-2' : 'mt-4 md:mt-6'
       }`}>
-        <nav className={`w-full max-w-[1400px] flex items-center pointer-events-auto h-16 md:h-20 px-4 md:px-8 rounded-full transition-all duration-700 ${
-          isScrolled ? 'bg-black/80 backdrop-blur-3xl border border-white/10 shadow-2xl scale-[0.98]' : 'bg-white/[0.05] backdrop-blur-2xl border border-white/5 shadow-xl'
+        <nav className={`w-full max-w-[1700px] flex items-center pointer-events-auto h-16 px-4 md:px-8 rounded-2xl md:rounded-3xl transition-all duration-500 ${
+          isScrolled ? 'bg-black/80 backdrop-blur-3xl border border-white/5 shadow-2xl' : 'bg-black/40 backdrop-blur-2xl border border-white/[0.03]'
         }`}>
           {!isSearchActive ? (
-            <div className="w-full h-full flex items-center justify-between">
+            <div className="w-full h-full flex items-center justify-between gap-6">
               {}
-              <div className="flex-1 flex items-center justify-start min-w-[150px]">
-                <Link to="/" className="flex items-center gap-2 group transition-transform active:scale-95">
-                  <div className="w-8 h-8 md:w-10 md:h-10 bg-emerald-500 rounded-xl flex items-center justify-center shadow-[0_0_30px_rgba(16,185,129,0.4)] transition-all duration-700 group-hover:scale-110 group-hover:rotate-[360deg]">
-                    <span className="text-black font-black text-lg italic tracking-tighter">N</span>
+              <div className="flex items-center min-w-[100px] xl:min-w-[200px] flex-1 lg:flex-none">
+                <Link to="/" className="flex items-center gap-3 group transition-transform active:scale-95 px-1">
+                  <div className="w-7 h-7 md:w-8 md:h-8 bg-white text-black rounded-lg flex items-center justify-center transition-all duration-500 group-hover:bg-emerald-500">
+                    <span className="font-black text-sm italic tracking-tighter">N</span>
                   </div>
-                  <span className="hidden xl:block text-white font-black text-lg tracking-tighter uppercase italic group-hover:tracking-[0.1em] transition-all duration-700">Nocturne</span>
+                  <span className="hidden xl:block text-white font-black text-base tracking-tighter uppercase italic transition-all duration-500">Nocturne</span>
                 </Link>
               </div>
 
               {}
-              <div className="hidden lg:flex items-center justify-center relative h-full">
-                <div className="flex items-center gap-1 relative h-full" ref={navContainerRef}>
+              <div className="hidden lg:flex items-center justify-center flex-1 min-w-0 px-4">
+                <div className="flex items-center gap-2 relative h-10" ref={navContainerRef}>
                   {activeRect && (
                     <div 
-                      className="absolute bottom-4 h-[2px] bg-emerald-500 transition-all duration-500 ease-[cubic-bezier(0.23,1,0.32,1)] shadow-[0_0_15px_rgba(16,185,129,0.8)]"
-                      style={{ left: activeRect.left, width: activeRect.width }}
-                    />
+                      className="absolute bg-white/[0.08] backdrop-blur-sm rounded-xl transition-all duration-500 ease-[cubic-bezier(0.23,1,0.32,1)] border border-white/[0.05] shadow-[0_8px_32px_rgba(0,0,0,0.4)]"
+                      style={{ 
+                        left: activeRect.left, 
+                        width: activeRect.width,
+                        height: '100%',
+                        top: '0'
+                      }}
+                    >
+                      <div className="absolute inset-x-0 -bottom-[1px] h-[1px] bg-gradient-to-r from-transparent via-emerald-500/50 to-transparent blur-[1px]" />
+                    </div>
                   )}
                   {primaryLinks.map((link) => (
                     <Link
                       key={link.name}
                       to={link.path}
                       data-path={link.path}
-                      className={`relative px-3 py-2 text-[10px] font-black uppercase tracking-[0.15em] transition-all duration-500 whitespace-nowrap hover:translate-y-[-2px] ${
-                        location.pathname === link.path ? 'text-emerald-500' : 'text-white/70 hover:text-white'
+                      className={`relative px-4 py-2 text-[11px] xl:text-[12px] font-bold uppercase tracking-[0.1em] transition-all duration-300 whitespace-nowrap z-10 ${
+                        location.pathname === link.path ? 'text-white' : 'text-white/40 hover:text-white/80'
                       }`}
                     >
                       {link.name}
                     </Link>
                   ))}
+
+                  {}
+                  <div className="relative" ref={moreRef}>
+                    <button
+                      onClick={() => setIsMoreOpen(!isMoreOpen)}
+                      className={`relative px-4 py-2 text-[11px] xl:text-[12px] font-bold uppercase tracking-[0.1em] transition-all duration-300 whitespace-nowrap z-10 flex items-center gap-1.5 ${
+                        isMoreOpen ? 'text-white bg-white/10 rounded-xl' : 'text-white/40 hover:text-white/80'
+                      }`}
+                    >
+                      More
+                      <ChevronDown size={14} className={`transition-transform duration-300 ${isMoreOpen ? 'rotate-180' : ''}`} />
+                    </button>
+
+                    <div className={`absolute top-full mt-4 left-1/2 -translate-x-1/2 bg-black/90 backdrop-blur-3xl border border-white/10 rounded-2xl p-2 min-w-[220px] shadow-[0_32px_64px_rgba(0,0,0,0.8)] z-[110] transition-all duration-500 ease-[cubic-bezier(0.23,1,0.32,1)] origin-top ${
+                      isMoreOpen 
+                        ? 'opacity-100 scale-100 translate-y-0 pointer-events-auto' 
+                        : 'opacity-0 scale-90 -translate-y-4 pointer-events-none'
+                    }`}>
+                      <div className="grid grid-cols-1 gap-1">
+                        {platformLinks.map((link) => (
+                          <Link
+                            key={link.name}
+                            to={link.path}
+                            onClick={() => setIsMoreOpen(false)}
+                            className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-300 group ${
+                              location.pathname === link.path ? 'bg-emerald-500/10 text-emerald-400' : 'hover:bg-white/5 text-white/50 hover:text-white'
+                            }`}
+                          >
+                            <span className={`transition-all duration-300 ${location.pathname === link.path ? 'text-emerald-500 scale-110' : 'opacity-40 group-hover:opacity-100 group-hover:scale-110'}`}>
+                              {link.icon}
+                            </span>
+                            <span className="text-[11px] font-bold uppercase tracking-[0.15em]">{link.name}</span>
+                          </Link>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
 
               {}
-              <div className="flex-1 flex items-center justify-end gap-3 md:gap-4 ml-4">
-                <div className="hidden xl:flex items-center gap-1 border-r border-white/10 pr-4 mr-1">
-                  {platformLinks.map((link) => (
-                    <Link
-                      key={link.name}
-                      to={link.path}
-                      className={`flex items-center gap-2 px-3 py-2 text-[9px] font-black uppercase tracking-[0.15em] transition-all duration-500 whitespace-nowrap hover:translate-y-[-2px] rounded-full hover:bg-white/5 ${
-                        location.pathname === link.path ? 'text-emerald-400 bg-emerald-500/10' : 'text-white/40 hover:text-white/70'
-                      }`}
-                    >
-                      <span className={location.pathname === link.path ? 'text-emerald-400 animate-pulse' : 'text-white/20'}>
-                        {link.icon}
-                      </span>
-                      <span className="hidden xl:inline">{link.name}</span>
-                    </Link>
-                  ))}
-                </div>
-
-                {location.pathname !== '/discover' && (
-                  <div className="relative" ref={searchWrapRef}>
-                    <div className="hidden sm:flex items-center bg-white/[0.03] backdrop-blur-2xl rounded-full px-4 py-2 border border-white/5 focus-within:border-emerald-500/30 transition-all duration-500 group shadow-lg hover:bg-white/[0.08]">
+              <div className="flex items-center justify-end gap-3 md:gap-4 flex-none">
+                <div className={`relative group/search shrink-0 transition-all duration-500 ${location.pathname === '/discover' ? 'opacity-0 pointer-events-none invisible' : 'opacity-100'}`} ref={searchWrapRef}>
+                    <div className="hidden sm:flex items-center bg-black/40 rounded-xl px-3 py-2 border border-white/[0.02] focus-within:border-white/10 focus-within:bg-black/60 transition-all duration-500 shadow-xl group hover:bg-black/60">
                       {isSearching ? (
-                        <div className="w-4 h-4 border-2 border-white/20 border-t-emerald-500 rounded-full animate-spin transition-colors" />
+                        <div className="w-3 h-3 border border-white/10 border-t-emerald-500 rounded-full animate-spin" />
                       ) : (
-                        <Search size={16} className="text-white/20 group-hover:text-emerald-500 transition-colors" />
+                        <Search size={14} className="text-white/20 group-hover:text-white/60 transition-colors" />
                       )}
                       <input 
                         type="text" 
-                        placeholder="Deep Search..." 
-                        className="bg-transparent border-none outline-none text-white text-[11px] font-bold px-3 w-20 md:w-28 lg:w-32 xl:w-44 placeholder:text-white/10 placeholder:uppercase transition-all"
+                        placeholder="DISCOVER..." 
+                        className="bg-transparent border-none outline-none text-white text-[10px] font-bold px-2 w-16 md:w-20 lg:w-28 placeholder:text-white/10 placeholder:uppercase transition-all focus:w-40 lg:focus:w-48"
                         value={searchValue}
                         onFocus={() => setShowSuggestions(true)}
                         onChange={(e) => {
@@ -213,7 +245,7 @@ const Navbar = () => {
                     
                     {}
                     {showSuggestions && suggestions.length > 0 && (
-                      <div className="absolute top-[calc(100%+12px)] right-0 w-[300px] bg-black/80 backdrop-blur-3xl border border-white/10 rounded-2xl p-2 shadow-[0_30px_60px_rgba(0,0,0,0.8)] flex flex-col gap-1 overflow-hidden z-[200] animate-in fade-in slide-in-from-top-2 duration-300">
+                      <div className="absolute top-[calc(100%+16px)] right-0 w-[320px] bg-black/60 backdrop-blur-3xl border border-white/5 rounded-2xl p-2 shadow-[0_30px_60px_rgba(0,0,0,0.8)] flex flex-col gap-1 overflow-hidden z-[200] animate-in fade-in slide-in-from-top-2 duration-300">
                         {suggestions.map(s => {
                           const isCompany = s.certificate === 'COMPANY' || s.titleType === 'company';
                           const isPerson = s.certificate === 'PERSON' || s.titleType === 'person';
@@ -228,31 +260,24 @@ const Navbar = () => {
                               className="w-full flex items-center gap-3 p-2 rounded-xl hover:bg-white/5 transition-all text-left group"
                             >
                               <div className={`w-10 h-14 rounded-lg overflow-hidden shrink-0 flex items-center justify-center ${
-                                isCompany ? 'bg-blue-500/10 border border-blue-500/20' :
-                                isPerson  ? 'bg-amber-500/10 border border-amber-500/20' :
+                                isCompany ? 'bg-blue-500/10' :
+                                isPerson  ? 'bg-amber-500/10' :
                                             'bg-white/5'
                               }`}>
                                 {s.poster ? (
                                   <img src={s.poster} alt={s.title} className="w-full h-full object-cover" />
                                 ) : isCompany ? (
-                                  <svg className="w-5 h-5 text-blue-400/60" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-2 10v-5a1 1 0 00-1-1h-2a1 1 0 00-1 1v5m4 0H9" /></svg>
+                                  <svg className="w-4 h-4 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-2 10v-5a1 1 0 00-1-1h-2a1 1 0 00-1 1v5m4 0H9" /></svg>
                                 ) : isPerson ? (
-                                  <svg className="w-5 h-5 text-amber-400/60" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
+                                  <svg className="w-4 h-4 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
                                 ) : null}
                               </div>
                               <div className="flex flex-col min-w-0">
-                                <span className="text-[11px] font-black uppercase tracking-[0.05em] text-white line-clamp-1 group-hover:text-emerald-400 transition-colors">{s.title}</span>
-                                <div className="flex items-center gap-2 mt-1">
-                                  {isCompany && (
-                                    <span className="text-[8px] font-black uppercase text-blue-400 bg-blue-500/10 px-1.5 py-0.5 rounded">Company</span>
-                                  )}
-                                  {isPerson && !isCompany && (
-                                    <span className="text-[8px] font-black uppercase text-amber-400 bg-amber-500/10 px-1.5 py-0.5 rounded">Person</span>
-                                  )}
-                                  {!isCompany && !isPerson && s.certificate && s.certificate !== 'UNKNOWN' && (
-                                    <span className="text-[8px] font-black uppercase text-emerald-500 bg-emerald-500/10 px-1.5 py-0.5 rounded">{s.certificate}</span>
-                                  )}
-                                  {s.year && <span className="text-[9px] font-black text-white/30">{s.year}</span>}
+                                <span className="text-[10px] font-black uppercase tracking-wider text-white truncate group-hover:text-emerald-400 transition-colors">{s.title}</span>
+                                <div className="flex items-center gap-2 mt-1 opacity-40">
+                                  {isCompany && <span className="text-[8px] font-black uppercase text-blue-400">Company</span>}
+                                  {isPerson && <span className="text-[8px] font-black uppercase text-amber-400">Person</span>}
+                                  {s.year && <span className="text-[9px] font-bold">{s.year}</span>}
                                 </div>
                               </div>
                             </button>
@@ -261,50 +286,49 @@ const Navbar = () => {
                       </div>
                     )}
                   </div>
-                )}
 
-                <div className="flex items-center gap-2 md:gap-3">
-                  {location.pathname !== '/discover' && (
-                    <button 
-                      onClick={() => setIsSearchActive(true)}
-                      className="p-3 bg-white/5 border border-white/5 rounded-full text-white/40 hover:text-white hover:bg-emerald-500/20 transition-all duration-500 active:scale-90 sm:hidden"
-                    >
-                      <Search size={20} />
-                    </button>
-                  )}
-                  
-                  <button className="relative p-3 bg-white/5 border border-white/5 rounded-full text-white/30 hover:text-white transition-all duration-500 group active:scale-90">
-                    <Bell size={18} className="group-hover:rotate-12 transition-transform" />
-                    <span className="absolute top-2.5 right-2.5 w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse shadow-[0_0_10px_rgba(16,185,129,0.8)]" />
+                <div className="flex items-center gap-2">
+                  <button 
+                    onClick={() => setIsSearchActive(true)}
+                    className="sm:hidden p-2.5 bg-white/5 border border-white/5 rounded-full text-white/20 hover:text-white transition-all duration-500 active:scale-90"
+                  >
+                    <Search size={16} />
+                  </button>
+
+                  <button className="relative p-2.5 bg-white/5 border border-white/5 rounded-full text-white/20 hover:text-white transition-all duration-500 group">
+                    <Bell size={16} />
+                    <span className="absolute top-2.5 right-2.5 w-1.5 h-1.5 bg-emerald-500 rounded-full shadow-[0_0_10px_#10b981]" />
                   </button>
                   
                   <div className="relative" ref={profileRef}>
                     <button 
                       onClick={() => setIsProfileOpen(!isProfileOpen)}
-                      className="p-3 bg-white/5 border border-white/5 rounded-full text-white/40 hover:text-white hover:bg-emerald-500/20 transition-all duration-500 flex items-center group active:scale-95"
+                      className="p-2.5 bg-white/5 border border-white/5 rounded-full text-white/20 hover:text-white transition-all duration-500 flex items-center group"
                     >
-                      <User size={18} className="group-hover:rotate-6 transition-transform" />
+                      <User size={16} />
                     </button>
 
-                    <div className={`absolute top-full right-0 mt-4 w-64 bg-black/95 backdrop-blur-3xl border border-white/10 rounded-[2rem] shadow-2xl p-3 transition-all duration-700 ease-[cubic-bezier(0.34,1.56,0.64,1)] origin-top-right overflow-hidden ${
-                      isProfileOpen ? 'opacity-100 translate-y-0 pointer-events-auto scale-100' : 'opacity-0 -translate-y-10 pointer-events-none scale-75 blur-lg'
+                    <div className={`absolute top-full right-0 mt-4 w-60 bg-black/80 backdrop-blur-3xl border border-white/5 rounded-2xl shadow-2xl p-2 transition-all duration-700 ease-[cubic-bezier(0.34,1.56,0.64,1)] origin-top-right overflow-hidden ${
+                      isProfileOpen ? 'opacity-100 translate-y-0 scale-100' : 'opacity-0 -translate-y-4 scale-95 pointer-events-none'
                     }`}>
-                      <div className="px-4 py-3 border-b border-white/5 mb-2">
-                         <p className="text-[10px] font-black uppercase tracking-[0.3em] text-white/40 mb-1">Active User</p>
+                      <div className="px-4 py-3 border-b border-white/5 mb-1">
                          <div className="flex items-center gap-3">
-                           <div className="w-8 h-8 bg-emerald-500 rounded-lg flex items-center justify-center font-black text-black italic">S</div>
-                           <p className="text-sm font-black text-white italic">Sajal-26</p>
+                           <div className="w-8 h-8 bg-white rounded-lg flex items-center justify-center font-black text-black">SA</div>
+                           <div className="flex flex-col">
+                             <p className="text-[11px] font-black text-white italic">Sajal-26</p>
+                             <p className="text-[8px] font-bold text-white/30 uppercase tracking-widest">Premium Member</p>
+                           </div>
                          </div>
                       </div>
-                      <button className="w-full flex items-center gap-4 px-4 py-3 text-[10px] font-black uppercase tracking-[0.2em] text-white/50 hover:text-white hover:bg-white/5 rounded-2xl transition-all group">
-                        <Bookmark size={16} className="text-white/10 group-hover:text-emerald-500 transition-colors" /> My Watchlist
+                      <button className="w-full flex items-center gap-3 px-4 py-2.5 text-[9px] font-black uppercase tracking-widest text-white/40 hover:text-white hover:bg-white/5 rounded-xl transition-all">
+                        <Bookmark size={14} /> My Watchlist
                       </button>
-                      <button className="w-full flex items-center gap-4 px-4 py-3 text-[10px] font-black uppercase tracking-[0.2em] text-white/50 hover:text-white hover:bg-white/5 rounded-2xl transition-all group">
-                        <Settings size={16} className="text-white/10 group-hover:text-emerald-500 transition-colors" /> Account Settings
+                      <button className="w-full flex items-center gap-3 px-4 py-2.5 text-[9px] font-black uppercase tracking-widest text-white/40 hover:text-white hover:bg-white/5 rounded-xl transition-all">
+                        <Settings size={14} /> Settings
                       </button>
-                      <div className="my-2 border-t border-white/5" />
-                      <button className="w-full flex items-center gap-4 px-4 py-5 text-[10px] font-black uppercase tracking-[0.2em] text-emerald-500 hover:bg-emerald-500 hover:text-black rounded-2xl transition-all group shadow-lg">
-                        <LogOut size={16} /> Terminate session
+                      <div className="my-1 border-t border-white/5" />
+                      <button className="w-full flex items-center gap-3 px-4 py-3 text-[9px] font-black uppercase tracking-widest text-emerald-500 hover:bg-emerald-500 hover:text-black rounded-xl transition-all">
+                        <LogOut size={14} /> Log Out
                       </button>
                     </div>
                   </div>
@@ -312,7 +336,7 @@ const Navbar = () => {
               </div>
             </div>
           ) : (
-            <div className="w-full h-full flex items-center animate-in slide-in-from-right-10 duration-700 ease-out relative" ref={searchWrapRef}>
+            <div className="w-full h-full flex items-center animate-in fade-in slide-in-from-top-4 duration-500 ease-[cubic-bezier(0.23,1,0.32,1)] relative" ref={searchWrapRef}>
               <button 
                 onClick={() => { setIsSearchActive(false); setShowSuggestions(false); setSearchValue(""); }}
                 className="p-3 text-white/40 hover:text-white shrink-0 hover:bg-white/5 rounded-full transition-all active:scale-90"
@@ -357,39 +381,31 @@ const Navbar = () => {
                           key={s.imdb_id}
                           onMouseDown={(e) => e.preventDefault()}
                           onClick={() => {
+                            navigate(`/${isPerson ? 'person' : 'title'}/${s.imdb_id}`);
+                            setSearchValue("");
                             setShowSuggestions(false);
-                            setSearchValue('');
                             setIsSearchActive(false);
-                            navigate(`/discover?q=${encodeURIComponent(s.title)}`);
                           }}
-                          className="w-full flex items-center gap-3 p-2 rounded-xl hover:bg-white/5 active:bg-white/10 transition-all text-left group"
+                          className="w-full flex items-center gap-4 p-3 rounded-2xl hover:bg-white/[0.03] border border-transparent hover:border-white/10 active:bg-white/5 transition-all text-left group"
                         >
-                          <div className={`w-10 h-14 rounded-lg overflow-hidden shrink-0 flex items-center justify-center ${
-                            isCompany ? 'bg-blue-500/10 border border-blue-500/20' :
-                            isPerson  ? 'bg-amber-500/10 border border-amber-500/20' :
-                                        'bg-white/5'
-                          }`}>
+                          <div className="w-12 h-16 rounded-xl overflow-hidden shrink-0 bg-white/[0.02] border border-white/5 flex items-center justify-center">
                             {s.poster ? (
-                              <img src={s.poster} alt={s.title} className="w-full h-full object-cover" />
-                            ) : isCompany ? (
-                              <svg className="w-5 h-5 text-blue-400/60" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-2 10v-5a1 1 0 00-1-1h-2a1 1 0 00-1 1v5m4 0H9" /></svg>
-                            ) : isPerson ? (
-                              <svg className="w-5 h-5 text-amber-400/60" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
-                            ) : null}
+                              <img src={s.poster} alt={s.title} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" />
+                            ) : (
+                               <Film size={20} className="text-white/10" />
+                            )}
                           </div>
-                          <div className="flex flex-col min-w-0">
-                            <span className="text-[11px] font-black uppercase tracking-[0.05em] text-white line-clamp-1 group-hover:text-emerald-400 transition-colors">{s.title}</span>
-                            <div className="flex items-center gap-2 mt-1">
-                              {isCompany && (
-                                <span className="text-[8px] font-black uppercase text-blue-400 bg-blue-500/10 px-1.5 py-0.5 rounded">Company</span>
+                          <div className="flex flex-col min-w-0 flex-1">
+                            <span className="text-[12px] font-black uppercase tracking-tight text-white line-clamp-1 group-hover:text-emerald-500 transition-colors">{s.title}</span>
+                            <div className="flex items-center gap-2 mt-1.5">
+                              {isCompany ? (
+                                <span className="text-[8px] font-black uppercase text-emerald-500/60 bg-emerald-500/5 px-2 py-0.5 rounded-lg border border-emerald-500/10">Archive</span>
+                              ) : isPerson ? (
+                                <span className="text-[8px] font-black uppercase text-white/40 bg-white/5 px-2 py-0.5 rounded-lg border border-white/5">Entity</span>
+                              ) : (
+                                <span className="text-[8px] font-black uppercase text-emerald-500/40 bg-emerald-500/5 px-2 py-0.5 rounded-lg border border-emerald-500/10">{s.certificate || 'Movie'}</span>
                               )}
-                              {isPerson && !isCompany && (
-                                <span className="text-[8px] font-black uppercase text-amber-400 bg-amber-500/10 px-1.5 py-0.5 rounded">Person</span>
-                              )}
-                              {!isCompany && !isPerson && s.certificate && s.certificate !== 'UNKNOWN' && (
-                                <span className="text-[8px] font-black uppercase text-emerald-500 bg-emerald-500/10 px-1.5 py-0.5 rounded">{s.certificate}</span>
-                              )}
-                              {s.year && <span className="text-[9px] font-black text-white/30">{s.year}</span>}
+                              {s.year && <span className="text-[9px] font-black text-white/20 tracking-widest">{s.year}</span>}
                             </div>
                           </div>
                         </button>
@@ -429,17 +445,18 @@ const Navbar = () => {
                   setIsMobileMenuOpen(!isMobileMenuOpen);
                 } else {
                   setIsMobileMenuOpen(false);
+                  navigate(item.path);
                 }
               }}
               className={`flex flex-col items-center justify-center gap-1 transition-all duration-300 relative group ${
-                (location.pathname === item.path || (item.name === 'Social' && location.pathname === '/community')) ? 'text-emerald-500 scale-110' : 'text-white/30 active:scale-95'
+                (location.pathname === item.path || (item.path === '#more' && isMobileMenuOpen)) ? 'text-emerald-500 scale-110' : 'text-white/30 active:scale-95'
               }`}
             >
-              <div className={`transition-all duration-500 ${ (location.pathname === item.path || (item.name === 'Social' && location.pathname === '/community')) ? 'animate-pulse' : ''}`}>
+              <div className={`transition-all duration-500 ${ (location.pathname === item.path || (item.path === '#more' && isMobileMenuOpen)) ? 'animate-pulse' : ''}`}>
                 {item.icon}
               </div>
               <span className="text-[8px] font-black uppercase tracking-[0.1em]">{item.name}</span>
-              {(location.pathname === item.path || (item.name === 'Social' && location.pathname === '/community')) && (
+              {(location.pathname === item.path || (item.path === '#more' && isMobileMenuOpen)) && (
                 <div className="absolute -bottom-1 w-1 h-1 bg-emerald-500 rounded-full shadow-[0_0_10px_rgba(16,185,129,1)]" />
               )}
             </button>

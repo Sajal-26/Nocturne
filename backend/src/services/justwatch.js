@@ -208,6 +208,7 @@ async function enrichWithImdb(items, typeHint = 'movie') {
       platform: item.platform,
       platform_id: item.platform_id,
       url: item.url,
+      titleType: d.titleType || (typeHint === 'SHOW' ? 'tvSeries' : 'movie')
     };
   });
 }
@@ -228,10 +229,11 @@ export async function fetchPlatformTop10({ platformCode, country = "IN", type = 
       query: TOP10_QUERY,
     }, { headers: JW_HEADERS });
 
-    if (res.data.errors) return [];
+    if (res.data.errors) {
+      return [];
+    }
     return extractTop10(res.data);
   } catch (err) {
-    console.error(`[JustWatch] Error fetching ${platformCode}:`, err.message);
     return [];
   }
 }
@@ -271,10 +273,11 @@ async function fetchMxPlayerPopular({ country = "IN", type = "MOVIE" }) {
       query: POPULAR_QUERY,
     }, { headers: JW_HEADERS });
 
-    if (res.data.errors) return [];
+    if (res.data.errors) {
+      return [];
+    }
     return extractPopular(res.data);
   } catch (err) {
-    console.error(`[JustWatch] Error fetching MX Player:`, err.message);
     return [];
   }
 }
