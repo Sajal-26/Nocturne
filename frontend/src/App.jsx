@@ -7,6 +7,7 @@ import Construction from './components/Construction';
 import NotFound from './components/NotFound';
 import SearchPage from './pages/SearchPage';
 import MusicPage from './pages/MusicPage';
+import MoviesPage from './pages/MoviesPage';
 import Home from './pages/Home';
 import { useLocation } from 'react-router-dom';
 
@@ -33,7 +34,7 @@ const CustomCursor = () => {
   return (
     <div 
       ref={cursorRef}
-      className="fixed top-0 left-0 w-[250px] h-[250px] bg-emerald-500/10 blur-[100px] rounded-full pointer-events-none z-[9999] transition-transform duration-[400ms] cubic-bezier(0.23, 1, 0.32, 1) will-change-transform select-none"
+      className="fixed top-0 left-0 w-[400px] h-[400px] bg-emerald-500/10 blur-[120px] rounded-full pointer-events-none z-[9999] will-change-transform select-none"
     />
   );
 };
@@ -80,10 +81,19 @@ function App() {
             <Route path="/home" element={<Home />} />
             
             {}
-            <Route path="/trending" element={<Construction title="Trending" />} />
-            <Route path="/movies" element={<Construction title="Movies" />} />
+            {/* Discovery Stack Routes */}
+            <Route path="/movie" element={<MoviesPage />} />
+            <Route path="/movie/trending" element={<MoviesPage />} />
+            <Route path="/movie/top-250" element={<MoviesPage />} />
+            <Route path="/movie/top-english" element={<MoviesPage />} />
+            <Route path="/movie/indian-cinema" element={<MoviesPage />} />
+            <Route path="/movie/worst-rated" element={<MoviesPage />} />
+            <Route path="/movie/hotstar" element={<MoviesPage />} />
+            <Route path="/movie/netflix" element={<MoviesPage />} />
+            <Route path="/movies" element={<MoviesPage />} />
             <Route path="/tv-shows" element={<Construction title="TV Shows" />} />
             <Route path="/discover" element={<SearchPage />} />
+            <Route path="/search" element={<SearchPage />} />
             <Route path="/music" element={<MusicPage />} />
             
             {}

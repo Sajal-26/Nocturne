@@ -182,20 +182,32 @@ export const resolvers = {
     bottomMovies: async () => {
       return await getBottomMovies();
     },
+    topEnglishMovies: async () => {
+      return await getTopEnglishMovies();
+    },
     topRatedByCountry: async (_, { countryCode }) => {
       return await getTopRatedByCountry(countryCode);
     },
     searchMovies: async (_, { query }) => {
-      return await searchMovies(query);
+      console.log("GraphQL | searchMovies | Query:", query);
+      const res = await searchMovies(query);
+      console.log("GraphQL | searchMovies | Count:", res?.length || 0);
+      return res;
     },
     advancedSearch: async (_, { filters }) => {
-      return await getAdvancedSearch(filters);
+      console.log("GraphQL | advancedSearch | Filters:", filters);
+      const res = await getAdvancedSearch(filters);
+      console.log("GraphQL | advancedSearch | Count:", res?.length || 0);
+      return res;
     },
     personSearch: async (_, { filters }) => {
       return await getPersonSearch(filters);
     },
     netflixTop10: async (_, { type, date }) => {
-      return await getNetflixTop10(type, date);
+      console.log("GraphQL | netflixTop10 | Request:", { type, date });
+      const res = await getNetflixTop10(type, date);
+      console.log("GraphQL | netflixTop10 | Count:", res?.data?.length || 0);
+      return res;
     },
     hotstarPopular: async () => {
       return await getHotstarPopular();

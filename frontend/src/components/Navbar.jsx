@@ -21,6 +21,16 @@ const Navbar = () => {
   const [showSuggestions, setShowSuggestions] = useState(false);
   const searchTimeoutRef = useRef(null);
   const searchWrapRef = useRef(null);
+  const isDiscoverPage = location.pathname === '/discover' || location.pathname === '/search';
+
+  const isPathActive = (path) => {
+    if (path === '/movies') {
+      return location.pathname === '/movies' || location.pathname.startsWith('/movie');
+    }
+    return location.pathname === path;
+  };
+
+  const activeNavPath = primaryLinksPath(location.pathname);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -93,7 +103,7 @@ const Navbar = () => {
   }, [searchValue]);
 
   useEffect(() => {
-    const activeEl = navContainerRef.current?.querySelector(`[data-path="${location.pathname}"]`);
+    const activeEl = navContainerRef.current?.querySelector(`[data-path="${activeNavPath}"]`);
     if (activeEl) {
       setActiveRect({
         left: activeEl.offsetLeft,
@@ -102,7 +112,7 @@ const Navbar = () => {
     } else {
       setActiveRect(null);
     }
-  }, [location.pathname, isSearchActive]);
+  }, [activeNavPath, isSearchActive]);
 
   const primaryLinks = [
     { name: 'Home', path: '/', icon: <Home size={18} /> },
@@ -122,7 +132,7 @@ const Navbar = () => {
     { name: 'Home', path: '/', icon: <Home size={22} /> },
     { name: 'Movies', path: '/movies', icon: <Play size={22} /> },
     { name: 'Music', path: '/music', icon: <Music size={22} /> },
-    { name: 'Trending', path: '/discover', icon: <Compass size={22} /> },
+    { name: 'Discover', path: '/discover', icon: <Compass size={22} /> },
     { name: 'More', path: '#more', icon: <LayoutGrid size={22} /> }
   ];
 
@@ -168,7 +178,7 @@ const Navbar = () => {
                       to={link.path}
                       data-path={link.path}
                       className={`relative px-4 py-2 text-[11px] xl:text-[12px] font-bold uppercase tracking-[0.1em] transition-all duration-300 whitespace-nowrap z-10 ${
-                        location.pathname === link.path ? 'text-white' : 'text-white/40 hover:text-white/80'
+                        isPathActive(link.path) ? 'text-white' : 'text-white/40 hover:text-white/80'
                       }`}
                     >
                       {link.name}
@@ -216,7 +226,7 @@ const Navbar = () => {
 
               {}
               <div className="flex items-center justify-end gap-3 md:gap-4 flex-none">
-                <div className={`relative group/search shrink-0 transition-all duration-500 ${location.pathname === '/discover' ? 'opacity-0 pointer-events-none invisible' : 'opacity-100'}`} ref={searchWrapRef}>
+                <div className={`relative group/search shrink-0 transition-all duration-500 ${isDiscoverPage ? 'opacity-0 pointer-events-none invisible' : 'opacity-100'}`} ref={searchWrapRef}>
                     <div className="hidden sm:flex items-center bg-black/40 rounded-xl px-3 py-2 border border-white/[0.02] focus-within:border-white/10 focus-within:bg-black/60 transition-all duration-500 shadow-xl group hover:bg-black/60">
                       {isSearching ? (
                         <div className="w-3 h-3 border border-white/10 border-t-emerald-500 rounded-full animate-spin" />
@@ -288,12 +298,14 @@ const Navbar = () => {
                   </div>
 
                 <div className="flex items-center gap-2">
-                  <button 
-                    onClick={() => setIsSearchActive(true)}
-                    className="sm:hidden p-2.5 bg-white/5 border border-white/5 rounded-full text-white/20 hover:text-white transition-all duration-500 active:scale-90"
-                  >
-                    <Search size={16} />
-                  </button>
+                  {!isDiscoverPage && (
+                    <button 
+                      onClick={() => setIsSearchActive(true)}
+                      className="sm:hidden p-2.5 bg-white/5 border border-white/5 rounded-full text-white/20 hover:text-white transition-all duration-500 active:scale-90"
+                    >
+                      <Search size={16} />
+                    </button>
+                  )}
 
                   <button className="relative p-2.5 bg-white/5 border border-white/5 rounded-full text-white/20 hover:text-white transition-all duration-500 group">
                     <Bell size={16} />
@@ -449,14 +461,14 @@ const Navbar = () => {
                 }
               }}
               className={`flex flex-col items-center justify-center gap-1 transition-all duration-300 relative group ${
-                (location.pathname === item.path || (item.path === '#more' && isMobileMenuOpen)) ? 'text-emerald-500 scale-110' : 'text-white/30 active:scale-95'
+                (isPathActive(item.path) || (item.path === '#more' && isMobileMenuOpen)) ? 'text-emerald-500 scale-110' : 'text-white/30 active:scale-95'
               }`}
             >
-              <div className={`transition-all duration-500 ${ (location.pathname === item.path || (item.path === '#more' && isMobileMenuOpen)) ? 'animate-pulse' : ''}`}>
+              <div className={`transition-all duration-500 ${ (isPathActive(item.path) || (item.path === '#more' && isMobileMenuOpen)) ? 'animate-pulse' : ''}`}>
                 {item.icon}
               </div>
               <span className="text-[8px] font-black uppercase tracking-[0.1em]">{item.name}</span>
-              {(location.pathname === item.path || (item.path === '#more' && isMobileMenuOpen)) && (
+              {(isPathActive(item.path) || (item.path === '#more' && isMobileMenuOpen)) && (
                 <div className="absolute -bottom-1 w-1 h-1 bg-emerald-500 rounded-full shadow-[0_0_10px_rgba(16,185,129,1)]" />
               )}
             </button>
@@ -485,19 +497,19 @@ const Navbar = () => {
                 key={link.name}
                 to={link.path}
                 className={`flex items-center gap-5 px-6 py-4 rounded-2xl transition-all duration-300 ${
-                  location.pathname === link.path 
+                  isPathActive(link.path) 
                   ? 'text-emerald-400 bg-white/10 shadow-lg' 
                   : 'text-white/70 hover:bg-white/5'
                 }`}
                 onClick={() => setIsMobileMenuOpen(false)}
               >
-                <span className={`transition-colors duration-300 ${location.pathname === link.path ? 'text-emerald-400 scale-110' : 'text-white/20'}`}>
+                <span className={`transition-colors duration-300 ${isPathActive(link.path) ? 'text-emerald-400 scale-110' : 'text-white/20'}`}>
                   {link.icon || <Plus size={22} />}
                 </span>
-                <span className={`text-[15px] font-black uppercase tracking-[0.2em] ${location.pathname === link.path ? 'font-black' : 'font-bold'}`}>
+                <span className={`text-[15px] font-black uppercase tracking-[0.2em] ${isPathActive(link.path) ? 'font-black' : 'font-bold'}`}>
                   {link.name}
                 </span>
-                {location.pathname === link.path && (
+                {isPathActive(link.path) && (
                   <div className="ml-auto w-1.5 h-1.5 bg-emerald-500 rounded-full shadow-[0_0_10px_rgba(16,185,129,1)]" />
                 )}
               </Link>
@@ -510,3 +522,10 @@ const Navbar = () => {
 };
 
 export default Navbar;
+
+function primaryLinksPath(pathname) {
+  if (pathname === '/movies' || pathname.startsWith('/movie')) {
+    return '/movies';
+  }
+  return pathname;
+}

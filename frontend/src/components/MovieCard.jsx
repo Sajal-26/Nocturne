@@ -54,13 +54,6 @@ const MovieCard = ({ item, className = "" }) => {
           </div>
         )}
       </div>
-
-      {/* Title Overlay (Top) */}
-      <div className="absolute top-4 left-4 right-4 z-[11] transition-opacity duration-500 flex justify-center text-center invisible group-hover:visible">
-         <h4 className="text-white font-black text-xs md:text-sm uppercase italic tracking-tighter drop-shadow-[0_2px_10px_rgba(0,0,0,0.8)] line-clamp-2 opacity-0 group-hover:opacity-100 transition-opacity duration-500 translate-y-[-10px] group-hover:translate-y-0 will-change-[transform,opacity]">
-           {item.title}
-         </h4>
-      </div>
     </div>
   );
 };

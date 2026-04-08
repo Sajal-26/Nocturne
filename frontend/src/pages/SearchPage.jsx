@@ -117,16 +117,14 @@ const SearchPage = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const query = searchParams.get('q') || '';
   const { 
-    trending: results, 
-    isLoading, 
-    fetchTrending, 
+    searchResults: results, 
+    searchIsLoading: isLoading, 
+    fetchSearchResults,
+    fetchDiscoverDefaults,
     setSearchQuery, 
-    setContentType,
     advanceFilters,
     updateAdvanceFilters,
-    applyLocalFilters,
-    fetchTime,
-    unfilteredResults
+    searchUnfilteredResults
   } = useMovieStore();
 
   const [localQuery, setLocalQuery] = useState(query);
@@ -166,15 +164,24 @@ const SearchPage = () => {
   }, [results.length]);
 
   useEffect(() => {
+    if (!query) {
+      setSearchQuery("");
+      if (advanceFilters.query !== '' || searchUnfilteredResults.length === 0) {
+        updateAdvanceFilters({ query: "" });
+        fetchDiscoverDefaults();
+      }
+      return;
+    }
+
     if (query !== advanceFilters.query) {
       updateAdvanceFilters({ query: query || "" });
-      setContentType(query ? 'search' : 'mixed');
-      fetchTrending();
-    } else if (unfilteredResults.length === 0) {
-      setContentType(query ? 'search' : 'mixed');
-      fetchTrending();
+      setSearchQuery(query || "");
+      fetchSearchResults(query || "");
+    } else if (searchUnfilteredResults.length === 0 && query) {
+      setSearchQuery(query || "");
+      fetchSearchResults(query || "");
     }
-  }, [query]);
+  }, [query, advanceFilters.query, searchUnfilteredResults.length, fetchDiscoverDefaults, fetchSearchResults, setSearchQuery, updateAdvanceFilters]);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -600,19 +607,45 @@ const SearchPage = () => {
 
         <div className="flex-grow">
           {isLoading ? (
-            <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6 lg:gap-8">
-              {[...Array(8)].map((_, i) => (
-                <div key={i} className="aspect-[2/3] bg-white/[0.02] border border-white/5 rounded-[2.5rem] animate-pulse" />
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-8">
+              {Array.from({ length: 15 }).map((_, i) => (
+                <div key={i} className="aspect-[2/3] bg-white/[0.02] border border-white/5 rounded-2xl animate-pulse overflow-hidden" />
               ))}
             </div>
           ) : results.length > 0 ? (
-            <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6 lg:gap-8">
-              {results.slice(0, visibleCount).map((item) => (
-                <div key={`${item.titleType}-${item.imdb_id}`} className="w-full">
-                  {item.titleType === 'person' || item.titleType === 'company' || item.imdb_id?.startsWith('nm') || item.imdb_id?.startsWith('co')
-                    ? <PersonCard item={item} className="w-full h-full" />
-                    : <MovieCard item={item} className="w-full h-full" />
-                  }
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-x-6 gap-y-16">
+              {results.slice(0, visibleCount).map((item, index) => (
+                <div
+                  key={`${item.titleType}-${item.imdb_id}-${index}`}
+                  className="group relative animate-in fade-in slide-in-from-bottom-8 duration-700 fill-mode-both"
+                  style={{ animationDelay: `${index * 40}ms` }}
+                >
+                  <div className="relative mb-6 aspect-[2/3] rounded-2xl overflow-hidden shadow-2xl border border-white/5 group-hover:border-emerald-500/30 transition-all duration-500">
+                    {item.titleType === 'person' || item.titleType === 'company' || item.imdb_id?.startsWith('nm') || item.imdb_id?.startsWith('co')
+                      ? <PersonCard item={item} className="w-full h-full" />
+                      : <MovieCard item={item} className="w-full h-full" />
+                    }
+                    <div className="absolute top-4 right-4 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-500 z-20">
+                      <div className="bg-emerald-500 text-black text-[10px] font-black uppercase px-2 py-1 rounded shadow-[0_4px_15px_rgba(16,185,129,0.3)] border border-emerald-400/20">
+                        #{index + 1}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2 px-1">
+                    <div className="flex items-start justify-between gap-3">
+                      <h3 className="text-white/90 font-black text-xs uppercase tracking-tighter leading-tight group-hover:text-emerald-500 transition-colors line-clamp-1 italic">
+                        {item.title}
+                      </h3>
+                      <div className="flex-shrink-0 bg-white/5 px-2 py-0.5 rounded text-emerald-400 text-[9px] font-black border border-white/5">
+                        {item.rating || '...'}
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-between opacity-30 text-[9px] font-bold uppercase tracking-widest">
+                      <span>{item.year || '----'}</span>
+                      <span className="italic">{item.certificate || item.titleType || 'NR'}</span>
+                    </div>
+                  </div>
                 </div>
               ))}
             </div>

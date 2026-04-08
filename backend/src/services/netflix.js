@@ -73,7 +73,9 @@ async function enrichWithImdb(netflixItems) {
 
       return {
         ...item,
-        imdb_id: best.imdb_id
+        ...best,
+        rank: item.weekly_rank,
+        title: item.show_title,
       };
     } catch (e) {
       return item;
@@ -81,6 +83,7 @@ async function enrichWithImdb(netflixItems) {
   }));
 
   const imdbIds = enrichedResults.filter(i => i.imdb_id).map(i => i.imdb_id);
+  console.log("Netflix Enrichment | Found IMDb IDs:", imdbIds.length, "out of", netflixItems.length);
   const details = await getTitlesBatch(imdbIds);
   const detailsMap = new Map(details.map(d => [d.imdb_id, d]));
 
@@ -88,9 +91,16 @@ async function enrichWithImdb(netflixItems) {
     const imdbDetail = detailsMap.get(item.imdb_id);
     if (!imdbDetail) return item;
 
+    // Smart merge: Only update with non-null values from IMDb details
+    const merged = { ...item };
+    Object.entries(imdbDetail).forEach(([key, value]) => {
+      if (value !== null && value !== undefined && value !== "") {
+        merged[key] = value;
+      }
+    });
+
     return {
-      ...item,
-      ...imdbDetail,
+      ...merged,
       rank: item.weekly_rank,
       title: item.show_title,
       category: item.category,
@@ -100,59 +110,67 @@ async function enrichWithImdb(netflixItems) {
 }
 
 export async function getNetflixTop10(type = 'movie', date = null) {
-  const allData = await fetchNetflixData();
+  try {
+    console.log("Netflix Service | Request:", { type, date });
+    const allData = await fetchNetflixData();
+    console.log("Netflix Service | Total Excel Rows:", allData.length);
 
-  const categoryFilter = type.toLowerCase() === 'tv' ? 'TV' : 'Film';
-  const filteredByCategory = allData.filter((row) =>
-    row.category && row.category.includes(categoryFilter)
-  );
+    const categoryFilter = type.toLowerCase() === 'tv' ? 'TV' : 'Film';
+    const filteredByCategory = allData.filter((row) =>
+      row.category && row.category.includes(categoryFilter)
+    );
 
-  if (filteredByCategory.length === 0) return { week: date, data: [] };
+    if (filteredByCategory.length === 0) return { week: date, data: [] };
 
-  let targetWeek = date;
-  if (!targetWeek) {
-    targetWeek = filteredByCategory.reduce((max, row) => {
-      return new Date(row.week) > new Date(max) ? row.week : max;
-    }, filteredByCategory[0].week);
+    let targetWeek = date;
+    if (!targetWeek) {
+      targetWeek = filteredByCategory.reduce((max, row) => {
+        return new Date(row.week) > new Date(max) ? row.week : max;
+      }, filteredByCategory[0].week);
+    }
+
+    const resultsCacheKey = `${type}-${targetWeek}`;
+    if (resultsCache.has(resultsCacheKey)) {
+      return resultsCache.get(resultsCacheKey);
+    }
+
+    const latest = filteredByCategory.filter((row) => row.week === targetWeek);
+    const top10 = latest
+      .sort((a, b) => a.weekly_rank - b.weekly_rank);
+
+    const enriched = await enrichWithImdb(top10);
+
+    const result = enriched.map((movie) => ({
+      rank: movie.weekly_rank,
+      title: movie.show_title,
+      hours_viewed: movie.weekly_hours_viewed,
+      weeks_in_top_10: movie.cumulative_weeks_in_top_10,
+      category: movie.category,
+      week: movie.week,
+      imdb_id: movie.imdb_id || null,
+      titleType: movie.titleType || (movie.category && movie.category.includes('TV') ? 'tvSeries' : 'movie'),
+      year: movie.year || null,
+      rating: movie.rating || null,
+      rating_count: movie.rating_count || 0,
+      rating_count_formatted: movie.rating_count_formatted || '0',
+      certificate: movie.certificate || 'NR',
+      poster: movie.poster || null,
+      duration: movie.duration || null,
+      genres: movie.genres || [],
+      description: movie.description || null
+    }));
+
+    const finalResponse = {
+      week: targetWeek,
+      data: result,
+    };
+
+    console.log("Netflix Service | Response Week:", targetWeek, "Items:", result.length);
+    resultsCache.set(resultsCacheKey, finalResponse);
+
+    return finalResponse;
+  } catch (err) {
+    console.error("Netflix Service | FATAL ERROR:", err.message);
+    return { week: date, data: [] };
   }
-
-  const resultsCacheKey = `${type}-${targetWeek}`;
-  if (resultsCache.has(resultsCacheKey)) {
-    return resultsCache.get(resultsCacheKey);
-  }
-
-  const latest = filteredByCategory.filter((row) => row.week === targetWeek);
-  const top10 = latest
-    .sort((a, b) => a.weekly_rank - b.weekly_rank);
-
-  const enriched = await enrichWithImdb(top10);
-
-  const result = enriched.map((movie) => ({
-    rank: movie.weekly_rank,
-    title: movie.show_title,
-    hours_viewed: movie.weekly_hours_viewed,
-    weeks_in_top_10: movie.cumulative_weeks_in_top_10,
-    category: movie.category,
-    week: movie.week,
-    imdb_id: movie.imdb_id || null,
-    titleType: movie.titleType || (movie.category && movie.category.includes('TV') ? 'tvSeries' : 'movie'),
-    year: movie.year || null,
-    rating: movie.rating || null,
-    rating_count: movie.rating_count || 0,
-    rating_count_formatted: movie.rating_count_formatted || '0',
-    certificate: movie.certificate || 'NR',
-    poster: movie.poster || null,
-    duration: movie.duration || null,
-    genres: movie.genres || [],
-    description: movie.description || null
-  }));
-
-  const finalResponse = {
-    week: targetWeek,
-    data: result,
-  };
-
-  resultsCache.set(resultsCacheKey, finalResponse);
-
-  return finalResponse;
 }

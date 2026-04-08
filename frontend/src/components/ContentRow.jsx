@@ -41,7 +41,25 @@ const ContentRow = ({ title, subtitle, items, isLoading, viewAllPath = "/discove
             ) : (
               items.map((item, index) => (
                 <div key={`${item.imdb_id}-${index}`} className="min-w-[160px] md:min-w-[300px]">
-                  <MovieCard item={item} />
+                  <div className="group relative">
+                    <div className="relative mb-4 aspect-[2/3] rounded-2xl overflow-hidden shadow-2xl border border-white/5 group-hover:border-emerald-500/30 transition-all duration-500">
+                      <MovieCard item={item} className="w-full h-full" />
+                    </div>
+                    <div className="space-y-2 px-1">
+                      <div className="flex items-start justify-between gap-3">
+                        <h3 className="text-white/90 font-black text-xs uppercase tracking-tighter leading-tight group-hover:text-emerald-500 transition-colors line-clamp-1 italic">
+                          {item.title}
+                        </h3>
+                        <div className="flex-shrink-0 bg-white/5 px-2 py-0.5 rounded text-emerald-400 text-[9px] font-black border border-white/5">
+                          {item.rating || '...'}
+                        </div>
+                      </div>
+                      <div className="flex items-center justify-between opacity-30 text-[9px] font-bold uppercase tracking-widest">
+                        <span>{item.year || '----'}</span>
+                        <span className="italic">{item.certificate || 'NR'}</span>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               ))
             )}
