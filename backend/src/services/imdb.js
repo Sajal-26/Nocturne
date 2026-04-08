@@ -166,7 +166,9 @@ const fetch = async (url, options) => {
     if (hit && hit.expiry > Date.now()) {
         return { ok: true, status: 200, json: async () => hit.data };
     }
-    const shouldProxy = url.includes('imdb') || url.includes('themoviedb.org');
+    const method = (options?.method || 'GET').toUpperCase();
+    const isProxyCandidate = url.includes('imdb') || url.includes('themoviedb.org');
+    const shouldProxy = isProxyCandidate && method === 'GET';
     try {
         const response = shouldProxy ? await fetchWithProxy(url, options) : await originalFetch(url, options);
         if (response.ok) {
@@ -214,6 +216,51 @@ const formatVotes = (n) => {
     if (n >= 1000) return `${(n / 1000).toFixed(1)}K`;
     return n.toString();
 };
+
+const IMDB_GENRE_ID_MAP = {
+    action: 'Action',
+    adventure: 'Adventure',
+    animation: 'Animation',
+    biography: 'Biography',
+    comedy: 'Comedy',
+    crime: 'Crime',
+    documentary: 'Documentary',
+    drama: 'Drama',
+    family: 'Family',
+    fantasy: 'Fantasy',
+    'film-noir': 'Film-Noir',
+    filmnoir: 'Film-Noir',
+    'game-show': 'Game-Show',
+    gameshow: 'Game-Show',
+    history: 'History',
+    horror: 'Horror',
+    music: 'Music',
+    musical: 'Musical',
+    mystery: 'Mystery',
+    news: 'News',
+    'reality-tv': 'Reality-TV',
+    realitytv: 'Reality-TV',
+    romance: 'Romance',
+    'sci-fi': 'Sci-Fi',
+    scifi: 'Sci-Fi',
+    short: 'Short',
+    sport: 'Sport',
+    'talk-show': 'Talk-Show',
+    talkshow: 'Talk-Show',
+    thriller: 'Thriller',
+    war: 'War',
+    western: 'Western'
+};
+
+const normalizeImdbGenreIds = (genres = []) =>
+    genres
+        .map((genre) => {
+            if (!genre) return null;
+            const trimmed = String(genre).trim();
+            const key = trimmed.toLowerCase().replace(/[\s_]+/g, '-');
+            return IMDB_GENRE_ID_MAP[key] || trimmed;
+        })
+        .filter(Boolean);
 
 const MOVIE_FIELDS = `
     id
@@ -864,7 +911,13 @@ export const searchMovies = async (query) => {
     });
 };
 
-export const getAdvancedSearch = async (filters) => {
+export const getAdvancedSearch = async (filters, options = {}) => {
+    const page = Math.max(parseInt(options.page, 10) || 1, 1);
+    const perPage = Math.min(Math.max(parseInt(options.perPage, 10) || 50, 1), 50);
+    const fetchCount = Math.min(page * perPage, 250);
+    const sliceStart = (page - 1) * perPage;
+    const sliceEnd = sliceStart + perPage;
+
     if (filters.query) {
         let items = await searchMovies(filters.query);
         const validItems = items.filter(i => {
@@ -902,20 +955,22 @@ export const getAdvancedSearch = async (filters) => {
     }
     const hash = "0a6de8896f4199e62945d43355755eb9ee4155d6b0d7923b0018d7068e33ccb7";
     const variables = {
-        "first": 50,
+        "first": fetchCount,
         "locale": "en-US",
         "sortBy": filters.sortBy || "POPULARITY",
         "sortOrder": "ASC"
     };
     if (filters.query) variables.searchText = filters.query;
-    if (filters.genres?.length) variables.genreConstraint = { allGenreIds: filters.genres };
+    if (filters.genres?.length) {
+        variables.genreConstraint = { allGenreIds: normalizeImdbGenreIds(filters.genres) };
+    }
     if (filters.languages?.length) variables.languageConstraint = { allLanguages: filters.languages };
     if (filters.countries?.length) variables.originCountryConstraint = { allCountries: filters.countries };
-    if (filters.ratingMin || filters.ratingMax) {
+    if ((filters.ratingMin ?? 0) > 0 || (filters.ratingMax ?? 10) < 10) {
         variables.userRatingsConstraint = {
             aggregateRatingRange: {
-                min: parseFloat(filters.ratingMin) || 1.0,
-                max: parseFloat(filters.ratingMax) || 10.0
+                min: parseFloat(filters.ratingMin ?? 0),
+                max: parseFloat(filters.ratingMax ?? 10)
             }
         };
     }
@@ -923,7 +978,7 @@ export const getAdvancedSearch = async (filters) => {
         if (!variables.userRatingsConstraint) variables.userRatingsConstraint = {};
         variables.userRatingsConstraint.ratingsCountRange = { min: parseInt(filters.votesMin) };
     }
-    if (filters.yearStart || filters.yearEnd) {
+    if ((filters.yearStart ?? 1900) > 1900 || (filters.yearEnd ?? 2030) < 2030) {
         variables.releaseDateConstraint = {
             releaseDateRange: {
                 start: filters.yearStart ? `${filters.yearStart}-01-01` : "1900-01-01",
@@ -931,11 +986,11 @@ export const getAdvancedSearch = async (filters) => {
             }
         };
     }
-    if (filters.runtimeMin || filters.runtimeMax) {
+    if ((filters.runtimeMin ?? 0) > 0 || (filters.runtimeMax ?? 300) < 300) {
         variables.runtimeConstraint = {
             runtimeRangeMinutes: {
                 min: parseInt(filters.runtimeMin) || 0,
-                max: parseInt(filters.runtimeMax) || 999
+                max: parseInt(filters.runtimeMax) || 300
             }
         };
     }
@@ -945,19 +1000,40 @@ export const getAdvancedSearch = async (filters) => {
     if (filters.adult === 'ONLY') {
         variables.adultSearchConstraint = { isAdult: "ONLY" };
     }
-    const url = `${IMDB_GQL_URL}?operationName=AdvancedTitleSearch&variables=${encodeURIComponent(JSON.stringify(variables))}&extensions=${encodeURIComponent(JSON.stringify({
-        persistedQuery: { version: 1, sha256Hash: hash }
-    }))}`;
+    const body = {
+        operationName: "AdvancedTitleSearch",
+        variables,
+        extensions: {
+            persistedQuery: { version: 1, sha256Hash: hash }
+        }
+    };
     try {
-        const response = await fetch(url, { method: "GET", headers: HEADERS });
+        const response = await fetch(IMDB_GQL_URL, {
+            method: "POST",
+            headers: {
+                ...HEADERS,
+                Referer: "https://www.imdb.com/search/title/"
+            },
+            body: JSON.stringify(body)
+        });
+        if (!response.ok) {
+            throw new Error(`IMDb AdvancedTitleSearch HTTP ${response.status}`);
+        }
         const json = await response.json();
-        if (!json.data?.advancedTitleSearch) return [];
-        return json.data.advancedTitleSearch.edges.map((item, index) => {
+        if (json.errors?.length) {
+            throw new Error(`IMDb AdvancedTitleSearch GraphQL Error: ${json.errors[0]?.message || 'Unknown error'}`);
+        }
+        if (!json.data?.advancedTitleSearch) {
+            console.warn('[IMDb Advanced Search] Empty payload:', JSON.stringify({ variables, json }, null, 2));
+            return [];
+        }
+        const edges = json.data.advancedTitleSearch.edges || [];
+        return edges.slice(sliceStart, sliceEnd).map((item, index) => {
             const node = item.node.title;
             const credits = node.principalCredits || [];
             const director = credits.find(c => c.role.text === "Director")?.credits[0]?.name?.nameText?.text || "N/A";
             return {
-                rank: index + 1,
+                rank: sliceStart + index + 1,
                 imdb_id: node.id,
                 title: node.titleText?.text || "Unknown",
                 year: node.releaseYear?.year || null,
@@ -973,6 +1049,12 @@ export const getAdvancedSearch = async (filters) => {
             };
         });
     } catch (err) {
+        console.error('[IMDb Advanced Search Error]', {
+            filters,
+            variables,
+            body,
+            message: err.message
+        });
         return [];
     }
 };

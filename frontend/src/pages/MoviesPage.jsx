@@ -2,7 +2,8 @@ import React, { useEffect, useState, useRef, useMemo } from 'react';
 import { useMovieStore } from '../store/useMovieStore';
 import MovieCard from '../components/MovieCard';
 import NetflixTimeline from '../components/NetflixTimeline';
-import { Globe, TrendingUp, Award, AlertCircle, MapPin, ChevronDown } from 'lucide-react';
+import { Globe, TrendingUp, Award, AlertCircle, MapPin, ChevronDown, Filter } from 'lucide-react';
+import { useParams, useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 
 const COUNTRIES = [
   { code: "IN", name: "India", flag: "🇮🇳" },
@@ -20,6 +21,7 @@ const PRIMARY_CATEGORIES = [
   { id: 'movies', path: '/movie/trending', label: 'Trending', icon: <TrendingUp size={12} /> },
   { id: 'top-rated', path: '/movie/top-250', label: 'Top 250', icon: <Award size={12} /> },
   { id: 'top-english', path: '/movie/top-english', label: 'Top English', icon: <Globe size={12} /> },
+  { id: 'genre', path: '/movie/genre', label: 'Genres', icon: <Filter size={12} /> },
   { id: 'by-country', path: '/movie/indian-cinema', label: 'Indian Cinema', icon: <MapPin size={12} /> },
   { id: 'bottom', path: '/movie/worst-rated', label: 'Worst Rated', icon: <AlertCircle size={12} /> },
 ];
@@ -29,12 +31,40 @@ const SECONDARY_CATEGORIES = [
   { id: 'hotstar', path: '/movie/hotstar', label: 'Hotstar', icon: <img src="https://img.hotstar.com/image/upload/v1737554969/web-assets/prod/images/rebrand/logo.png" className="w-3 h-3 object-contain brightness-200" alt="Hotstar" /> },
 ];
 
+const GENRES = [
+  'Action', 'Adventure', 'Animation', 'Biography', 'Comedy', 'Crime',
+  'Documentary', 'Drama', 'Family', 'Fantasy', 'Film-Noir', 'Game-Show',
+  'History', 'Horror', 'Music', 'Musical', 'Mystery', 'News',
+  'Reality-TV', 'Romance', 'Sci-Fi', 'Short', 'Sport', 'Talk-Show',
+  'Thriller', 'War', 'Western'
+];
+
 const SORT_OPTIONS = [
   { id: 'DEFAULT', label: 'Default Rank' },
   { id: 'RATING_DESC', label: 'IMDb Rating' },
   { id: 'RELEASE_DESC', label: 'Release Date' },
   { id: 'ALPHABETICAL', label: 'Alphabetical' },
 ];
+
+const normalizeGenreSlug = (value) => value.toLowerCase();
+
+const parseGenreParam = (value) => {
+  if (!value) return [];
+
+  const allowedGenres = new Map(
+    GENRES.map((genre) => [normalizeGenreSlug(genre), genre])
+  );
+
+  return value
+    .split(',')
+    .map((genre) => allowedGenres.get(normalizeGenreSlug(genre.trim())))
+    .filter(Boolean);
+};
+
+const areGenreListsEqual = (left, right) => {
+  if (left.length !== right.length) return false;
+  return left.every((genre, index) => genre === right[index]);
+};
 
 const SortDropdown = ({ value, onChange }) => {
   const [isOpen, setIsOpen] = useState(false);
@@ -91,6 +121,113 @@ const SortDropdown = ({ value, onChange }) => {
             {value === option.id && <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 shadow-[0_0_10px_rgba(16,185,129,0.7)]" />}
           </button>
         ))}
+      </div>
+    </div>
+  );
+};
+
+const GenreDropdown = ({ selectedGenres, onToggleGenre, onClearGenres }) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const dropdownRef = useRef(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setIsOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const summaryLabel = selectedGenres.length
+    ? `${selectedGenres.length} genre${selectedGenres.length > 1 ? 's' : ''} selected`
+    : 'All movie genres';
+
+  return (
+    <div className="relative" ref={dropdownRef}>
+      <button
+        type="button"
+        onClick={() => setIsOpen((open) => !open)}
+        className={`flex w-full items-center justify-between gap-3 rounded-2xl border px-4 py-3 text-left transition-all duration-300 ${
+          isOpen
+            ? 'border-emerald-500/40 bg-emerald-500/10 shadow-[0_10px_30px_rgba(16,185,129,0.12)]'
+            : 'border-white/10 bg-white/5 hover:border-white/20 hover:bg-white/[0.08]'
+        }`}
+      >
+        <div className="min-w-0">
+          <span className="block text-[10px] font-black uppercase tracking-[0.2em] text-white/40">Genre Explorer</span>
+          <span className="mt-1 block truncate text-[10px] font-black uppercase tracking-[0.12em] text-white/80">
+            {summaryLabel}
+          </span>
+        </div>
+        <ChevronDown
+          size={14}
+          className={`shrink-0 text-white/40 transition-transform duration-300 ${isOpen ? 'rotate-180 text-emerald-400' : ''}`}
+        />
+      </button>
+
+      <div
+        className={`absolute left-0 right-0 top-[calc(100%+12px)] z-[130] overflow-hidden rounded-[28px] border border-white/10 bg-[#070707]/95 shadow-[0_24px_60px_rgba(0,0,0,0.55)] backdrop-blur-2xl transition-all duration-300 ease-[cubic-bezier(0.23,1,0.32,1)] ${
+          isOpen ? 'pointer-events-auto translate-y-0 opacity-100' : 'pointer-events-none -translate-y-2 opacity-0'
+        }`}
+      >
+        <div className="space-y-4 p-4 md:p-5">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <span className="block text-[10px] font-black uppercase tracking-[0.2em] text-white/40">Genre Explorer</span>
+              <p className="mt-1 text-[9px] uppercase tracking-[0.18em] text-white/35">
+                Select one or more genres to discover matching titles.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                onClearGenres();
+                setIsOpen(false);
+              }}
+              className="rounded-2xl border border-white/10 bg-white/5 px-4 py-2 text-[9px] font-black uppercase tracking-[0.18em] text-white/60 transition hover:border-emerald-500/40 hover:text-white"
+            >
+              Clear genres
+            </button>
+          </div>
+
+          {selectedGenres.length > 0 && (
+            <div className="flex flex-wrap gap-2">
+              {selectedGenres.map((genre) => (
+                <button
+                  key={genre}
+                  type="button"
+                  onClick={() => onToggleGenre(genre)}
+                  className="rounded-full border border-emerald-400/30 bg-emerald-500/15 px-3 py-1.5 text-[9px] font-black uppercase tracking-[0.14em] text-emerald-300 transition hover:bg-emerald-500/20"
+                >
+                  {genre}
+                </button>
+              ))}
+            </div>
+          )}
+
+          <div className="grid grid-cols-2 gap-2.5 md:grid-cols-4 lg:grid-cols-5">
+            {GENRES.map((genre) => {
+              const isActive = selectedGenres.includes(genre);
+              return (
+                <button
+                  key={genre}
+                  type="button"
+                  onClick={() => onToggleGenre(genre)}
+                  className={`rounded-3xl border px-3 py-3 text-[9px] font-black uppercase tracking-[0.12em] transition-all duration-300 sm:px-4 sm:text-[10px] ${
+                    isActive
+                      ? 'border-emerald-400 bg-emerald-500 text-black shadow-[0_10px_20px_rgba(16,185,129,0.2)]'
+                      : 'border-white/10 bg-white/5 text-white/40 hover:border-white/20 hover:bg-white/[0.08] hover:text-white'
+                  }`}
+                >
+                  {genre}
+                </button>
+              );
+            })}
+          </div>
+        </div>
       </div>
     </div>
   );
@@ -164,8 +301,6 @@ const SubtleRegionSelector = () => {
   );
 };
 
-import { useParams, useNavigate, useLocation } from 'react-router-dom';
-
 const MoviesPage = () => {
   const { 
     trending, 
@@ -174,16 +309,59 @@ const MoviesPage = () => {
     selectedCountry,
     isLoading, 
     fetchTrending,
+    loadMoreTrending,
+    hasMoreTrending,
+    isFetchingMoreTrending,
     initUserLocation,
     selectedNetflixDate,
-    setSelectedNetflixDate
+    setSelectedNetflixDate,
+    advanceFilters,
+    updateAdvanceFilters
   } = useMovieStore();
 
   const { date } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
+  const [searchParams, setSearchParams] = useSearchParams();
   const isInitialMount = useRef(true);
+  const loadMoreRef = useRef(null);
   const [sortBy, setSortBy] = useState('DEFAULT');
+
+  const selectedGenres = advanceFilters?.genres || [];
+  const genreParam = searchParams.get('g') || '';
+  const isGenreView = contentType === 'genre' || location.pathname === '/movie/genre';
+
+  const handleGenreToggle = (genre) => {
+    const nextGenres = selectedGenres.includes(genre)
+      ? selectedGenres.filter((item) => item !== genre)
+      : [...selectedGenres, genre];
+
+    updateAdvanceFilters({ genres: nextGenres, query: '', titleType: 'movie' });
+    const nextGenreParam = nextGenres.map(normalizeGenreSlug).join(',');
+
+    if (location.pathname !== '/movie/genre') {
+      navigate(nextGenreParam ? `/movie/genre?g=${nextGenreParam}` : '/movie/genre');
+      return;
+    }
+
+    setSearchParams(nextGenreParam ? { g: nextGenreParam } : {}, { replace: true });
+
+    if (contentType !== 'genre') {
+      setContentType('genre');
+    }
+  };
+
+  const clearGenres = () => {
+    updateAdvanceFilters({ genres: [], query: '', titleType: 'movie' });
+    if (location.pathname !== '/movie/genre') {
+      navigate('/movie/genre');
+      return;
+    }
+    setSearchParams({}, { replace: true });
+    if (contentType !== 'genre') {
+      setContentType('genre');
+    }
+  };
 
   const sortedTrending = useMemo(() => {
     const items = [...trending];
@@ -227,6 +405,13 @@ const MoviesPage = () => {
         targetType = 'top-rated';
       } else if (path === '/movie/top-english' || path === '/top-english') {
         targetType = 'top-english';
+      } else if (path === '/movie/genre') {
+        targetType = 'genre';
+        const parsedGenres = parseGenreParam(genreParam);
+        if (advanceFilters.titleType !== 'movie' || advanceFilters.query !== '' || !areGenreListsEqual(selectedGenres, parsedGenres)) {
+          updateAdvanceFilters({ genres: parsedGenres, titleType: 'movie', query: '' });
+          return;
+        }
       } else if (path === '/movie/indian-cinema' || path === '/indian-cinema') {
         targetType = 'by-country';
       } else if (path === '/movie/worst-rated' || path === '/worst-rated') {
@@ -272,7 +457,23 @@ const MoviesPage = () => {
     };
 
     syncAndFetch();
-  }, [location.pathname, date, selectedCountry, contentType, selectedNetflixDate]);
+  }, [location.pathname, genreParam, date, selectedCountry, contentType, selectedNetflixDate]);
+
+  useEffect(() => {
+    if (!loadMoreRef.current || contentType !== 'genre' || !hasMoreTrending) return undefined;
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          loadMoreTrending();
+        }
+      },
+      { rootMargin: '500px 0px' }
+    );
+
+    observer.observe(loadMoreRef.current);
+    return () => observer.disconnect();
+  }, [contentType, hasMoreTrending, loadMoreTrending]);
 
   return (
     <div className="min-h-screen bg-black pb-20 selection:bg-emerald-500/30">
@@ -281,13 +482,13 @@ const MoviesPage = () => {
         <div className="absolute top-[-10%] left-[-10%] w-[50vw] h-[50vh] bg-emerald-500/5 blur-[120px] rounded-full"></div>
       </div>
 
-      <div className="relative z-10 max-max-w-7xl mx-auto px-6 md:px-12 pt-28 space-y-6">
+      <div className="relative z-10 mx-auto max-w-7xl px-2 pt-20 space-y-4 sm:px-3 md:px-4 md:pt-24 md:space-y-5">
         
         {/* Navigation Layer - Primary Filters */}
-        <div className="relative z-[100] space-y-8 animate-in fade-in slide-in-from-top-4 duration-500">
+        <div className="relative z-[100] space-y-6 animate-in fade-in slide-in-from-top-4 duration-500">
            {/* Row 1: Primary Filters */}
-           <div className="space-y-4">
-              <div className="flex items-center gap-4 h-6">
+           <div className="space-y-3">
+              <div className="flex items-center gap-3 h-6">
                  <span className="text-white/40 text-[10px] font-black uppercase tracking-[0.2em] ml-1">Rankings & Charts</span>
                  <div className={`transition-all duration-500 transform ${
                    contentType === 'by-country' 
@@ -318,9 +519,9 @@ const MoviesPage = () => {
            </div>
 
            {/* Row 2: Platforms */}
-           <div className="space-y-4">
+           <div className="space-y-3">
               <span className="text-white/40 text-[10px] font-black uppercase tracking-[0.2em] ml-1">Platforms</span>
-              <div className="grid grid-cols-2 gap-2.5 md:flex md:flex-wrap md:items-center md:gap-3">
+              <div className="grid grid-cols-2 gap-2 md:flex md:flex-wrap md:items-center md:gap-3">
                 {SECONDARY_CATEGORIES.map(cat => (
                   <button
                      key={cat.id}
@@ -340,7 +541,17 @@ const MoviesPage = () => {
               </div>
            </div>
 
-           <div className="flex items-center justify-between gap-4 border-t border-white/[0.03] pt-6">
+           {isGenreView && (
+           <div className="grid gap-3 md:gap-4">
+              <GenreDropdown
+                selectedGenres={selectedGenres}
+                onToggleGenre={handleGenreToggle}
+                onClearGenres={clearGenres}
+              />
+           </div>
+           )}
+
+           <div className="flex items-center justify-between gap-4 border-t border-white/[0.03] pt-4">
               <span className="text-white/40 text-[10px] font-black uppercase tracking-[0.2em] ml-1">Sort Results</span>
               <SortDropdown value={sortBy} onChange={setSortBy} />
            </div>
@@ -356,7 +567,7 @@ const MoviesPage = () => {
         </div>
 
         {/* Results Grid */}
-        <div className="relative pt-4 z-10">
+        <div className="relative z-10">
            {isLoading ? (
              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-8">
                {Array.from({ length: 15 }).map((_, i) => (
@@ -364,15 +575,15 @@ const MoviesPage = () => {
                ))}
              </div>
            ) : (
-             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-x-6 gap-y-16">
+             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-x-4 gap-y-12">
                {sortedTrending.map((movie, index) => (
                  <div 
                    key={`${movie.imdb_id}-${index}`}
                    className="group relative animate-in fade-in slide-in-from-bottom-8 duration-700 fill-mode-both"
                    style={{ animationDelay: `${index * 40}ms` }}
                  >
-                   <div className="relative mb-6 aspect-[2/3] rounded-2xl overflow-hidden shadow-2xl border border-white/5 group-hover:border-emerald-500/30 transition-all duration-500">
-                     <MovieCard item={movie} className="w-full h-full" />
+                   <div className="relative mb-6 aspect-[2/3] rounded-2xl overflow-hidden shadow-xl border border-white/5 transition-colors duration-300 group-hover:border-emerald-500/20">
+                     <MovieCard item={movie} className="w-full h-full" priority={index < 10} />
                      <div className="absolute top-4 right-4 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-500 z-20">
                        <div className="bg-emerald-500 text-black text-[10px] font-black uppercase px-2 py-1 rounded shadow-[0_4px_15px_rgba(16,185,129,0.3)] border border-emerald-400/20">
                          #{index + 1}
@@ -396,6 +607,22 @@ const MoviesPage = () => {
                    </div>
                  </div>
                ))}
+             </div>
+           )}
+
+           {contentType === 'genre' && sortedTrending.length > 0 && (
+             <div ref={loadMoreRef} className="flex justify-center py-12">
+               {isFetchingMoreTrending ? (
+                 <div className="rounded-2xl border border-white/10 bg-white/5 px-6 py-3 text-[10px] font-black uppercase tracking-[0.24em] text-emerald-400">
+                   Loading more movies...
+                 </div>
+               ) : hasMoreTrending ? (
+                 <div className="h-10 w-10 rounded-full border border-white/10 bg-white/5 animate-pulse" />
+               ) : (
+                 <div className="text-[10px] font-black uppercase tracking-[0.24em] text-white/25">
+                   End of results
+                 </div>
+               )}
              </div>
            )}
 

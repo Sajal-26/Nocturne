@@ -14,10 +14,11 @@ import { COUNTRIES } from '../constants/countries';
 import { LANGUAGES } from '../constants/languages';
 
 const GENRES = [
-  "Action", "Adventure", "Animation", "Biography", "Comedy", "Crime", 
-  "Documentary", "Drama", "Family", "Fantasy", "Film-Noir", "History", 
-  "Horror", "Music", "Musical", "Mystery", "Romance", "Sci-Fi", 
-  "Short", "Sport", "Thriller", "War", "Western"
+  "Action", "Adventure", "Animation", "Biography", "Comedy", "Crime",
+  "Documentary", "Drama", "Family", "Fantasy", "Film-Noir", "Game-Show",
+  "History", "Horror", "Music", "Musical", "Mystery", "News",
+  "Reality-TV", "Romance", "Sci-Fi", "Short", "Sport", "Talk-Show",
+  "Thriller", "War", "Western"
 ];
 
 const SORT_OPTIONS = [
@@ -328,7 +329,7 @@ const SearchPage = () => {
             <div className="mb-6">
               <label className="text-[9px] font-black uppercase tracking-[0.2em] text-white/30 block mb-3">Genres</label>
               <div className="flex flex-wrap gap-2">
-                {GENRES.slice(0, 12).map(genre => (
+                {GENRES.map(genre => (
                   <button
                     key={genre}
                     onClick={() => {
@@ -490,7 +491,7 @@ const SearchPage = () => {
               <div className="mb-8">
                 <label className="text-[9px] font-black uppercase tracking-[0.2em] text-white/30 block mb-4">Genres</label>
                 <div className="flex flex-wrap gap-2">
-                  {GENRES.slice(0, 12).map(genre => (
+                  {GENRES.map(genre => (
                     <button
                       key={genre}
                       onClick={() => {
@@ -623,7 +624,7 @@ const SearchPage = () => {
                   <div className="relative mb-6 aspect-[2/3] rounded-2xl overflow-hidden shadow-2xl border border-white/5 group-hover:border-emerald-500/30 transition-all duration-500">
                     {item.titleType === 'person' || item.titleType === 'company' || item.imdb_id?.startsWith('nm') || item.imdb_id?.startsWith('co')
                       ? <PersonCard item={item} className="w-full h-full" />
-                      : <MovieCard item={item} className="w-full h-full" />
+                      : <MovieCard item={item} className="w-full h-full" priority={index < 10} />
                     }
                     <div className="absolute top-4 right-4 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-500 z-20">
                       <div className="bg-emerald-500 text-black text-[10px] font-black uppercase px-2 py-1 rounded shadow-[0_4px_15px_rgba(16,185,129,0.3)] border border-emerald-400/20">

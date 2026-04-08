@@ -29,10 +29,17 @@ async function startServer() {
         cors: {
             origin: "*", 
             methods: ["GET", "POST"]
-        }
+        },
+        pingInterval: 5000,
+        pingTimeout: 3000
     });
 
     io.on('connection', (socket) => {
+        socket.emit('server:status', {
+            status: 'online',
+            timestamp: Date.now(),
+        });
+
         socket.on('sync:play', (data) => {
             socket.broadcast.emit('sync:playback', data);
         });

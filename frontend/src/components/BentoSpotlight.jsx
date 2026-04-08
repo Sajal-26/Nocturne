@@ -40,7 +40,7 @@ const BentoSpotlight = ({ trending = [], netflix = [], prime = [], isLoading }) 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 md:gap-5 h-auto md:h-[650px]">
         { }
         <div className="md:col-span-2 md:row-span-2 h-[400px] md:h-full rounded-[2.5rem] bg-black overflow-hidden border border-white/5 hover:border-white/10 transition-all duration-700 shadow-2xl relative group">
-          {main && <MovieCard item={main} className="h-full w-full" />}
+          {main && <MovieCard item={main} className="h-full w-full" priority />}
           <div className="absolute top-6 left-6 z-20">
             <span className="px-4 py-1.5 bg-emerald-500 text-black text-[9px] font-black uppercase tracking-widest rounded-full shadow-lg">Deep Spotlight</span>
           </div>
@@ -48,7 +48,7 @@ const BentoSpotlight = ({ trending = [], netflix = [], prime = [], isLoading }) 
 
         { }
         <div className="md:col-span-1 md:row-span-1 h-[300px] md:h-full rounded-[2.5rem] bg-white/[0.02] overflow-hidden border border-white/5 hover:border-white/10 transition-all duration-700 shadow-xl relative group">
-          {netflix[0] && <MovieCard item={netflix[0]} className="h-full w-full" />}
+          {netflix[0] && <MovieCard item={netflix[0]} className="h-full w-full" priority />}
           <div className="absolute top-4 left-4 z-20">
             <span className="px-3 py-1 bg-white/10 backdrop-blur-md border border-white/10 text-white text-[8px] font-black uppercase tracking-widest rounded-lg">Hot Mix</span>
           </div>
@@ -56,7 +56,7 @@ const BentoSpotlight = ({ trending = [], netflix = [], prime = [], isLoading }) 
 
         { }
         <div className="md:col-span-1 md:row-span-1 h-[300px] md:h-full rounded-[2.5rem] bg-white/[0.02] overflow-hidden border border-white/5 hover:border-white/10 transition-all duration-700 shadow-xl relative group">
-          {prime[0] && <MovieCard item={prime[0]} className="h-full w-full" />}
+          {prime[0] && <MovieCard item={prime[0]} className="h-full w-full" priority />}
           <div className="absolute top-4 left-4 z-20">
             <span className="px-3 py-1 bg-white/10 backdrop-blur-md border border-white/10 text-white text-[8px] font-black uppercase tracking-widest rounded-lg">Popular</span>
           </div>
@@ -106,4 +106,4 @@ const BentoSpotlight = ({ trending = [], netflix = [], prime = [], isLoading }) 
   );
 };
 
-export default BentoSpotlight;
+export default React.memo(BentoSpotlight);

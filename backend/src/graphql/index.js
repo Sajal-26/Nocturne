@@ -154,7 +154,7 @@ export const typeDefs = `#graphql
     bottomMovies: [Movie]
     topRatedByCountry(countryCode: String!): [Movie]
     searchMovies(query: String!): [Movie]
-    advancedSearch(filters: AdvanceFilters!): [Movie]
+    advancedSearch(filters: AdvanceFilters!, page: Int, perPage: Int): [Movie]
     personSearch(filters: PersonFilters!): [Movie]
     netflixTop10(type: String, date: String): NetflixTop10Response
     hotstarPopular: HotstarPopularResponse
@@ -194,9 +194,9 @@ export const resolvers = {
       console.log("GraphQL | searchMovies | Count:", res?.length || 0);
       return res;
     },
-    advancedSearch: async (_, { filters }) => {
-      console.log("GraphQL | advancedSearch | Filters:", filters);
-      const res = await getAdvancedSearch(filters);
+    advancedSearch: async (_, { filters, page, perPage }) => {
+      console.log("GraphQL | advancedSearch | Filters:", filters, "Page:", page || 1, "PerPage:", perPage || 50);
+      const res = await getAdvancedSearch(filters, { page, perPage });
       console.log("GraphQL | advancedSearch | Count:", res?.length || 0);
       return res;
     },

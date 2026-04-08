@@ -1,12 +1,18 @@
 import { create } from 'zustand';
 import axios from 'axios';
 
-const GRAPHQL_URL = "http://localhost:4000/graphql";
+const GRAPHQL_URL = import.meta.env.DEV
+    ? '/graphql'
+    : `${(import.meta.env.VITE_API_URL || 'http://localhost:4000').replace(/\/$/, '')}/graphql`;
 
 let advanceFilterTimeout = null;
 
 export const useMovieStore = create((set, get) => ({
     trending: [],
+    trendingPage: 1,
+    trendingPerPage: 50,
+    hasMoreTrending: false,
+    isFetchingMoreTrending: false,
     contentType: 'mixed',
     selectedCountry: localStorage.getItem('nocturne_region') || 'IN',
     isLocationInitialized: false,
@@ -42,6 +48,17 @@ export const useMovieStore = create((set, get) => ({
     homeMxPlayer: [],
     homeCrunchyroll: [],
     homeHotstar: [],
+
+    // Home Page Loading States
+    homeTrendingLoading: true,
+    homeNetflixLoading: true,
+    homePrimeLoading: true,
+    homeAppleLoading: true,
+    homeZee5Loading: true,
+    homeSonyLivLoading: true,
+    homeMxPlayerLoading: true,
+    homeCrunchyrollLoading: true,
+    homeHotstarLoading: true,
 
     // Movies Page Specific State
     moviesTrending: [],
@@ -177,22 +194,47 @@ export const useMovieStore = create((set, get) => ({
 
     setContentType: (type) => {
         if (get().contentType === type && type !== 'search') return;
-        set({ contentType: type, trending: [] });
+        set({
+            contentType: type,
+            trending: [],
+            trendingPage: 1,
+            hasMoreTrending: false,
+            isFetchingMoreTrending: false
+        });
     },
 
     setSelectedCountry: (country) => {
         localStorage.setItem('nocturne_region', country);
-        set({ selectedCountry: country, trending: [] });
+        set({
+            selectedCountry: country,
+            trending: [],
+            trendingPage: 1,
+            hasMoreTrending: false,
+            isFetchingMoreTrending: false
+        });
     },
 
     setSelectedNetflixDate: (date) => {
         set({ selectedNetflixDate: date });
     },
 
-    fetchTrending: async () => {
-        const { contentType, selectedCountry, searchQuery, advanceFilters, personFilters, isLoading } = get();
+    fetchTrending: async (options = {}) => {
+        const {
+            contentType,
+            selectedCountry,
+            searchQuery,
+            advanceFilters,
+            personFilters,
+            trendingPerPage
+        } = get();
+        const page = Math.max(options.page || 1, 1);
+        const append = Boolean(options.append);
 
-        set({ isLoading: true, error: null });
+        set({
+            isLoading: append ? get().isLoading : true,
+            isFetchingMoreTrending: append,
+            error: null
+        });
         const start = Date.now();
 
         let resultKey = "trendingMovies";
@@ -210,9 +252,10 @@ export const useMovieStore = create((set, get) => ({
                 args = `(countryCode: "${selectedCountry}")`;
                 break;
             case 'advanced':
+            case 'genre':
                 resultKey = "advancedSearch";
                 const filterStr = JSON.stringify(advanceFilters).replace(/"([^"]+)":/g, '$1:');
-                args = `(filters: ${filterStr})`;
+                args = `(filters: ${filterStr}, page: ${page}, perPage: ${trendingPerPage})`;
                 break;
             case 'person':
                 resultKey = "personSearch";
@@ -341,15 +384,26 @@ export const useMovieStore = create((set, get) => ({
             }
 
             const end = Date.now();
+            const canPaginate = resultKey === 'advancedSearch';
+            const nextTrending = append ? [...get().trending, ...fetchedData] : fetchedData;
             set({
                 unfilteredResults: fetchedData,
-                trending: fetchedData,
+                trending: nextTrending,
                 isLoading: false,
-                fetchTime: (end - start) / 1000
+                isFetchingMoreTrending: false,
+                fetchTime: (end - start) / 1000,
+                trendingPage: page,
+                hasMoreTrending: canPaginate && fetchedData.length === trendingPerPage && (page * trendingPerPage) < 250
             });
         } catch (error) {
-            set({ error: error.message, isLoading: false });
+            set({ error: error.message, isLoading: false, isFetchingMoreTrending: false });
         }
+    },
+
+    loadMoreTrending: async () => {
+        const { hasMoreTrending, isLoading, isFetchingMoreTrending, trendingPage } = get();
+        if (!hasMoreTrending || isLoading || isFetchingMoreTrending) return;
+        return get().fetchTrending({ page: trendingPage + 1, append: true });
     },
 
     fetchSearchResults: async (queryOverride) => {
@@ -495,7 +549,19 @@ export const useMovieStore = create((set, get) => ({
     },
 
     fetchHomeData: async () => {
-        set({ isLoading: true });
+        // Set all loading states to true initially
+        set({
+            homeTrendingLoading: true,
+            homeNetflixLoading: true,
+            homePrimeLoading: true,
+            homeAppleLoading: true,
+            homeZee5Loading: true,
+            homeSonyLivLoading: true,
+            homeMxPlayerLoading: true,
+            homeCrunchyrollLoading: true,
+            homeHotstarLoading: true,
+        });
+
         try {
             const gql_query = `
                 query {
@@ -508,44 +574,102 @@ export const useMovieStore = create((set, get) => ({
                 }
             `;
 
-            const [gqlRes, netflixRes, platformRes, hotstarRes] = await Promise.all([
-                axios.post('/graphql', { query: gql_query }),
-                axios.get('/api/netflix-top-10'),
-                axios.get('/api/platform-top-10'),
-                axios.get('/api/hotstar-popular')
-            ]);
+            // Start all API calls in parallel
+            const gqlPromise = axios.post('/graphql', { query: gql_query });
+            const netflixPromise = axios.get('/api/netflix-top-10');
+            const platformPromise = axios.get('/api/platform-top-10');
+            const hotstarPromise = axios.get('/api/hotstar-popular');
 
-            const movies = gqlRes.data?.data?.trendingMovies || [];
-            const tvShows = gqlRes.data?.data?.trendingTVShows || [];
+            // Handle GraphQL response
+            gqlPromise.then((gqlRes) => {
+                const movies = gqlRes.data?.data?.trendingMovies || [];
+                const tvShows = gqlRes.data?.data?.trendingTVShows || [];
 
-            // Interleave by rank
-            const interleaved = [];
-            const maxLength = Math.max(movies.length, tvShows.length);
-            for (let i = 0; i < maxLength; i++) {
-                const pair = [];
-                if (movies[i]) pair.push(movies[i]);
-                if (tvShows[i]) pair.push(tvShows[i]);
-                // Shuffle the pair to randomize M/T order within the same rank
-                interleaved.push(...pair.sort(() => Math.random() - 0.5));
-            }
+                // Interleave by rank
+                const interleaved = [];
+                const maxLength = Math.max(movies.length, tvShows.length);
+                for (let i = 0; i < maxLength; i++) {
+                    const pair = [];
+                    if (movies[i]) pair.push(movies[i]);
+                    if (tvShows[i]) pair.push(tvShows[i]);
+                    // Shuffle the pair to randomize M/T order within the same rank
+                    interleaved.push(...pair.sort(() => Math.random() - 0.5));
+                }
 
-            const platformData = platformRes.data?.results || {};
-
-            set({
-                homeTrending: interleaved,
-                homeNetflix: netflixRes.data?.data || [],
-                homePrime: platformData.prime || [],
-                homeApple: platformData.apple || [],
-                homeZee5: platformData.zee5 || [],
-                homeSonyLiv: platformData.sonyliv || [],
-                homeMxPlayer: platformData.mxplayer || [],
-                homeCrunchyroll: platformData.crunchyroll || [],
-                homeHotstar: hotstarRes.data?.data || [],
-                isLoading: false
+                set({
+                    homeTrending: interleaved,
+                    homeTrendingLoading: false
+                });
+            }).catch((error) => {
+                console.error('Trending Data Fetch Error:', error);
+                set({ homeTrendingLoading: false });
             });
+
+            // Handle Netflix response
+            netflixPromise.then((netflixRes) => {
+                set({
+                    homeNetflix: netflixRes.data?.data || [],
+                    homeNetflixLoading: false
+                });
+            }).catch((error) => {
+                console.error('Netflix Data Fetch Error:', error);
+                set({ homeNetflixLoading: false });
+            });
+
+            // Handle Platform response
+            platformPromise.then((platformRes) => {
+                const platformData = platformRes.data?.results || {};
+                set({
+                    homePrime: platformData.prime || [],
+                    homeApple: platformData.apple || [],
+                    homeZee5: platformData.zee5 || [],
+                    homeSonyLiv: platformData.sonyliv || [],
+                    homeMxPlayer: platformData.mxplayer || [],
+                    homeCrunchyroll: platformData.crunchyroll || [],
+                    homePrimeLoading: false,
+                    homeAppleLoading: false,
+                    homeZee5Loading: false,
+                    homeSonyLivLoading: false,
+                    homeMxPlayerLoading: false,
+                    homeCrunchyrollLoading: false
+                });
+            }).catch((error) => {
+                console.error('Platform Data Fetch Error:', error);
+                set({
+                    homePrimeLoading: false,
+                    homeAppleLoading: false,
+                    homeZee5Loading: false,
+                    homeSonyLivLoading: false,
+                    homeMxPlayerLoading: false,
+                    homeCrunchyrollLoading: false
+                });
+            });
+
+            // Handle Hotstar response
+            hotstarPromise.then((hotstarRes) => {
+                set({
+                    homeHotstar: hotstarRes.data?.data || [],
+                    homeHotstarLoading: false
+                });
+            }).catch((error) => {
+                console.error('Hotstar Data Fetch Error:', error);
+                set({ homeHotstarLoading: false });
+            });
+
         } catch (error) {
             console.error('Home Data Fetch Error:', error);
-            set({ isLoading: false });
+            // Set all loading states to false on general error
+            set({
+                homeTrendingLoading: false,
+                homeNetflixLoading: false,
+                homePrimeLoading: false,
+                homeAppleLoading: false,
+                homeZee5Loading: false,
+                homeSonyLivLoading: false,
+                homeMxPlayerLoading: false,
+                homeCrunchyrollLoading: false,
+                homeHotstarLoading: false
+            });
         }
     },
 
